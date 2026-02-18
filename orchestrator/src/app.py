@@ -28,7 +28,7 @@ def check_fraud(card_number="999", order_amount=1.0):
         stub = fraud_detection_grpc.FraudDetectionServiceStub(channel)
         # Call the service through the stub object.
         response = stub.CheckFraud(fraud_detection.FraudRequest(card_number=card_number, order_amount=order_amount))
-    return response.greeting
+    return response.is_fraud
 
 # Import Flask.
 # Flask is a web framework for Python.
