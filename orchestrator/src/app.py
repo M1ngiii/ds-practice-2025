@@ -63,11 +63,15 @@ def checkout():
     request_data = json.loads(request.data)
     # Print request object data
     print("Request Data:", request_data.get('items'))
+    
+    card_info = request_data.get("creditCard", {})
+    card_number = card_info.get("number", "")
+    order_amount = card_info.get("order_amount", 0.0)
 
     # Dummy response following the provided YAML specification for the bookstore
     order_status_response = {
         'orderId': '12345',
-        'status': check_fraud(request_data.card_number, request_data.order_amount),
+        'status': check_fraud(card_number, order_amount),
         'suggestedBooks': [
             {'bookId': '123', 'title': 'The Best Book', 'author': 'Author 1'},
             {'bookId': '456', 'title': 'The Second Best Book', 'author': 'Author 2'}

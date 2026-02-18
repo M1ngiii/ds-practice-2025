@@ -45,7 +45,7 @@ def serve():
     # Create a gRPC server
     server = grpc.server(futures.ThreadPoolExecutor())
     # Add HelloService
-    fraud_detection_grpc.add_HelloServiceServicer_to_server(HelloService(), server)
+    fraud_detection_grpc.add_FraudDetectionServiceServicer_to_server(FraudDetectionService(), server)
     # Listen on port 50051
     port = "50051"
     server.add_insecure_port("[::]:" + port)
