@@ -16,9 +16,18 @@ def greet(name='you'):
     # Establish a connection with the fraud-detection gRPC service.
     with grpc.insecure_channel('fraud_detection:50051') as channel:
         # Create a stub object.
-        stub = fraud_detection_grpc.HelloServiceStub(channel)
+        stub = fraud_detection_grpc.FraidDetectionService(channel)
         # Call the service through the stub object.
         response = stub.SayHello(fraud_detection.HelloRequest(name=name))
+    return response.greeting
+
+def check_fraud(card_number="999", order_amount=1.0):
+    # Establish a connection with the fraud-detection gRPC service.
+    with grpc.insecure_channel('fraud_detection:50051') as channel:
+        # Create a stub object.
+        stub = fraud_detection_grpc.FraudDetectionServiceStub(channel)
+        # Call the service through the stub object.
+        response = stub.CheckFraud(fraud_detection.FraudRequest(card_number=card_number, order_amount=order_amount))
     return response.greeting
 
 # Import Flask.
@@ -58,7 +67,7 @@ def checkout():
     # Dummy response following the provided YAML specification for the bookstore
     order_status_response = {
         'orderId': '12345',
-        'status': 'Order Approved',
+        'status': check_fraud(request_data.card_number, request_data.order_amount),
         'suggestedBooks': [
             {'bookId': '123', 'title': 'The Best Book', 'author': 'Author 1'},
             {'bookId': '456', 'title': 'The Second Best Book', 'author': 'Author 2'}
