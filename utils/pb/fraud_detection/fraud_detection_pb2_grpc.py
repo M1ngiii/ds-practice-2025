@@ -5,7 +5,7 @@ import warnings
 
 import fraud_detection_pb2 as fraud__detection__pb2
 
-GRPC_GENERATED_VERSION = '1.78.0'
+GRPC_GENERATED_VERSION = '1.70.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + ' but the generated code in fraud_detection_pb2_grpc.py depends on'
+        + f' but the generated code in fraud_detection_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -34,8 +34,8 @@ class FraudDetectionServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.CheckFraud = channel.unary_unary(
-                '/fraud_detection.FraudDetectionService/CheckFraud',
+        self.checkFraud = channel.unary_unary(
+                '/fraud_detection.FraudDetectionService/checkFraud',
                 request_serializer=fraud__detection__pb2.FraudRequest.SerializeToString,
                 response_deserializer=fraud__detection__pb2.FraudResponse.FromString,
                 _registered_method=True)
@@ -44,7 +44,7 @@ class FraudDetectionServiceStub(object):
 class FraudDetectionServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def CheckFraud(self, request, context):
+    def checkFraud(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -53,8 +53,8 @@ class FraudDetectionServiceServicer(object):
 
 def add_FraudDetectionServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'CheckFraud': grpc.unary_unary_rpc_method_handler(
-                    servicer.CheckFraud,
+            'checkFraud': grpc.unary_unary_rpc_method_handler(
+                    servicer.checkFraud,
                     request_deserializer=fraud__detection__pb2.FraudRequest.FromString,
                     response_serializer=fraud__detection__pb2.FraudResponse.SerializeToString,
             ),
@@ -70,7 +70,7 @@ class FraudDetectionService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def CheckFraud(request,
+    def checkFraud(request,
             target,
             options=(),
             channel_credentials=None,
@@ -83,7 +83,7 @@ class FraudDetectionService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/fraud_detection.FraudDetectionService/CheckFraud',
+            '/fraud_detection.FraudDetectionService/checkFraud',
             fraud__detection__pb2.FraudRequest.SerializeToString,
             fraud__detection__pb2.FraudResponse.FromString,
             options,
