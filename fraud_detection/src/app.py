@@ -33,25 +33,40 @@ class FraudDetectionService(fraud_detection_grpc.FraudDetectionServiceServicer):
         card_number = request.card_number
         order_amount = request.order_amount
 
-        print(f"Checking fraud for card: {card_number} and amount {order_amount}")
+        print(f"[FraudDetection] Received request — card: {card_number}, amount: {order_amount}")
 
         is_fraud = False
         if order_amount > 1000 or card_number.startswith("999"):
             is_fraud = True
 
+        print(f"[FraudDetection] Result — is_fraud: {is_fraud}")
         return fraud_detection.FraudResponse(is_fraud=is_fraud)
+
+#def serve():
+#    # Create a gRPC server
+#    server = grpc.server(futures.ThreadPoolExecutor())
+#    # Add HelloService
+#    fraud_detection_grpc.add_HelloServiceServicer_to_server(HelloService(), server)
+#    # Listen on port 50051
+#    port = "50051"
+#    server.add_insecure_port("[::]:" + port)
+#    # Start the server
+#    server.start()
+#    print("Server started. Listening on port 50051.")
+#    # Keep thread alive
+#    server.wait_for_termination()
 
 def serve():
     # Create a gRPC server
     server = grpc.server(futures.ThreadPoolExecutor())
-    # Add HelloService
+    # Add FraudDetectionService
     fraud_detection_grpc.add_FraudDetectionServiceServicer_to_server(FraudDetectionService(), server)
     # Listen on port 50051
     port = "50051"
     server.add_insecure_port("[::]:" + port)
     # Start the server
     server.start()
-    print("Server started. Listening on port 50051.")
+    print("[FraudDetection] Server started. Listening on port 50051.")
     # Keep thread alive
     server.wait_for_termination()
 
