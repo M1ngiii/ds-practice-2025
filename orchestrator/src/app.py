@@ -13,6 +13,11 @@ sys.path.insert(0, transaction_verification_grpc_path)
 import transaction_verification_pb2 as transaction_verification
 import transaction_verification_pb2_grpc as transaction_verification_grpc
 
+suggestions_grpc_path = os.path.abspath(os.path.join(FILE, '../../../utils/pb/suggestions'))
+sys.path.insert(0, suggestions_grpc_path)
+import suggestions_pb2 as suggestions
+import suggestions_pb2_grpc as suggestions_grpc
+
 import grpc
 import threading
 from flask import Flask, request
@@ -65,11 +70,15 @@ def check_transaction(order_data, results):
 
 def get_suggestions(order_data, results):
     print(f"[Orchestrator] Thread started: get_suggestions")
-    # TODO: gRPC call to suggestions:50053
+    item_names = [item.get('name', '') for item in order_data.get('items', [])]
+    with grpc.insecure_channel('suggestions:50053') as channel:
+        stub = suggestions_grpc.SuggestionsServiceStub(channel)
+        response = stub.getSuggestions(suggestions.SuggestionsRequest(item_names=item_names))
     results['suggestions'] = [
-        {'bookId': '123', 'title': 'The Best Book', 'author': 'Author 1'},
-        {'bookId': '456', 'title': 'The Second Best Book', 'author': 'Author 2'}
+        {'bookId': b.book_id, 'title': b.title, 'author': b.author}
+        for b in response.suggested_books
     ]
+    print(f"[Orchestrator] get_suggestions result: {results['suggestions']}")
 
 @app.route('/checkout', methods=['POST'])
 def checkout():
