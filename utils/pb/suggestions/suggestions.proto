@@ -2,20 +2,21 @@ syntax = "proto3";
 
 package suggestions;
 
+import "common/common.proto";
+
 service SuggestionsService {
+    rpc InitOrder (SuggestionsRequest) returns (SuggestionsResponse);
     rpc getSuggestions (SuggestionsRequest) returns (SuggestionsResponse);
 }
 
 message SuggestionsRequest {
-    repeated string item_names = 1;
-}
+    string order_id = 1;
+    repeated int32 vector_clock = 2;
 
-message Book {
-    string book_id = 1;
-    string title = 2;
-    string author = 3;
+    repeated string item_names = 3;
 }
 
 message SuggestionsResponse {
-    repeated Book suggested_books = 1;
+    repeated common.Book suggested_books = 1;
+    repeated int32 vector_clock = 2;
 }
