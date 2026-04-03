@@ -6,7 +6,8 @@ import "common/common.proto";
 
 service SuggestionsService {
     rpc InitOrder (SuggestionsRequest) returns (SuggestionsResponse);
-    rpc getSuggestions (SuggestionsRequest) returns (SuggestionsResponse);
+    rpc GenerateSuggestions (OrderEventRequest) returns (OrderEventResponse);
+    rpc ClearOrder (ClearOrderRequest) returns (ClearOrderResponse);
 }
 
 message SuggestionsRequest {
@@ -19,4 +20,26 @@ message SuggestionsRequest {
 message SuggestionsResponse {
     repeated common.Book suggested_books = 1;
     repeated int32 vector_clock = 2;
+}
+
+message OrderEventRequest {
+    string order_id = 1;
+    repeated int32 vector_clock = 2;
+}
+
+message OrderEventResponse {
+    bool success = 1;
+    string reason = 2;
+    repeated int32 vector_clock = 3;
+    repeated common.Book suggested_books = 4;
+}
+
+message ClearOrderRequest {
+    string order_id = 1;
+    repeated int32 vector_clock = 2;
+}
+
+message ClearOrderResponse {
+    bool success = 1;
+    string error = 2;
 }

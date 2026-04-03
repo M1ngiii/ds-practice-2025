@@ -6,7 +6,10 @@ import "common/common.proto";
 
 service TransactionVerificationService {
     rpc InitOrder (TransactionRequest) returns (TransactionResponse);
-    rpc verifyTransaction (TransactionRequest) returns (TransactionResponse);
+    rpc VerifyItems (OrderEventRequest) returns (OrderEventResponse);
+    rpc CheckUserData (OrderEventRequest) returns (OrderEventResponse);
+    rpc CheckCard (OrderEventRequest) returns (OrderEventResponse);
+    rpc ClearOrder (ClearOrderRequest) returns (ClearOrderResponse);
 }
 
 message Item {
@@ -36,4 +39,25 @@ message TransactionResponse {
     string reason = 2;
     repeated int32 vector_clock = 3;
     repeated common.Book suggested_books = 4;
+}
+
+message OrderEventRequest {
+    string order_id = 1;
+    repeated int32 vector_clock = 2;
+}
+
+message OrderEventResponse {
+    bool success = 1;
+    string reason = 2;
+    repeated int32 vector_clock = 3;
+}
+
+message ClearOrderRequest {
+    string order_id = 1;
+    repeated int32 vector_clock = 2;
+}
+
+message ClearOrderResponse {
+    bool success = 1;
+    string error = 2;
 }

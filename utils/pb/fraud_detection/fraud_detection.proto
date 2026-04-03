@@ -6,7 +6,9 @@ import "common/common.proto";
 
 service FraudDetectionService {
     rpc InitOrder (FraudRequest) returns (FraudResponse);
-    rpc checkFraud (FraudRequest) returns (FraudResponse);
+    rpc CheckUserFraud (OrderEventRequest) returns (OrderEventResponse);
+    rpc CheckCardFraud (OrderEventRequest) returns (OrderEventResponse);
+    rpc ClearOrder (ClearOrderRequest) returns (ClearOrderResponse);
 }
 
 message FraudRequest {
@@ -22,4 +24,25 @@ message FraudResponse {
     bool is_fraud = 1;
     repeated int32 vector_clock = 2;
     repeated common.Book suggested_books = 3;
+}
+
+message OrderEventRequest {
+    string order_id = 1;
+    repeated int32 vector_clock = 2;
+}
+
+message OrderEventResponse {
+    bool success = 1;
+    string reason = 2;
+    repeated int32 vector_clock = 3;
+}
+
+message ClearOrderRequest {
+    string order_id = 1;
+    repeated int32 vector_clock = 2;
+}
+
+message ClearOrderResponse {
+    bool success = 1;
+    string error = 2;
 }
