@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package order_queue;
+
+service OrderQueueService {
+    rpc Enqueue (EnqueueRequest) returns (EnqueueResponse);
+    rpc Dequeue (DequeueRequest) returns (DequeueResponse);
+
+    rpc TryBecomeLeader (LeaderRequest) returns (LeaderResponse);
+    rpc RenewLeadership (LeaderRequest) returns (LeaderResponse);
+    rpc GetLeader (GetLeaderRequest) returns (GetLeaderResponse);
+}
+
+message QueueItem {
+    string order_id = 1;
+}
+
+message EnqueueRequest {
+    string order_id = 1;
+}
+
+message EnqueueResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message DequeueRequest {
+    string executor_id = 1;
+}
+
+message DequeueResponse {
+    bool success = 1;
+    bool has_order = 2;
+    QueueItem order = 3;
+    string message = 4;
+}
+
+message LeaderRequest {
+    string executor_id = 1;
+}
+
+message LeaderResponse {
+    bool success = 1;
+    bool is_leader = 2;
+    string leader_id = 3;
+    string message = 4;
+}
+
+message GetLeaderRequest {}
+
+message GetLeaderResponse {
+    bool has_leader = 1;
+    string leader_id = 2;
+}

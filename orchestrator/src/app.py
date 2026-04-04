@@ -21,6 +21,11 @@ sys.path.insert(0, suggestions_grpc_path)
 import suggestions_pb2 as suggestions
 import suggestions_pb2_grpc as suggestions_grpc
 
+order_queue_grpc_path = os.path.abspath(os.path.join(FILE, '../../../utils/pb/order_queue'))
+sys.path.insert(0, order_queue_grpc_path)
+import order_queue_pb2 as order_queue
+import order_queue_pb2_grpc as order_queue_grpc
+
 import grpc
 import uuid
 import threading
@@ -80,6 +85,12 @@ def init_suggestions(order_data, order_id, vector_clock):
             vector_clock=vector_clock,
             item_names=[item.get('name', '') for item in order_data.get('items', [])]
         ))
+
+def enqueue_order(order_id):
+    with grpc.insecure_channel('order_queue:50054') as channel:
+        stub = order_queue_grpc.OrderQueueServiceStub(channel)
+        resp = stub.Enqueue(order_queue.EnqueueRequest(order_id=order_id))
+        return resp
 
 
 # ── Shared execution state ───────────────────────────────────────────────────
@@ -308,13 +319,6 @@ def checkout():
     print(f"[Orch] Init complete | order={order_id}")
 
     # ── Execution phase ────────────────────────────────────────────────────
-    # Partial order:
-    #   A ‖ B
-    #   C after A      (can overlap with B and D)
-    #   D after B      (can overlap with C)
-    #   E after C + D
-    #   F after E
-
     state = OrderExecution(order_id, initial_vc)
 
     exec_threads = [
@@ -342,6 +346,24 @@ def checkout():
             'orderId': order_id,
             'status': 'Order Rejected',
             'reason': state.failure_reason
+        }
+
+    # ── Enqueue approved order ─────────────────────────────────────────────
+    try:
+        enqueue_resp = enqueue_order(order_id)
+        print(f"[Orch] Enqueue result | order={order_id} | success={enqueue_resp.success} | msg={enqueue_resp.message}")
+
+        if not enqueue_resp.success:
+            return {
+                'orderId': order_id,
+                'status': 'Order Rejected',
+                'reason': f"Order verification succeeded, but enqueue failed: {enqueue_resp.message}"
+            }
+    except Exception as e:
+        return {
+            'orderId': order_id,
+            'status': 'Order Rejected',
+            'reason': f"Order verification succeeded, but enqueue failed: {str(e)}"
         }
 
     return {

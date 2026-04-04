@@ -53,3 +53,37 @@ class TransactionResponse(_message.Message):
     vector_clock: _containers.RepeatedScalarFieldContainer[int]
     suggested_books: _containers.RepeatedCompositeFieldContainer[_common_pb2.Book]
     def __init__(self, is_valid: bool = ..., reason: _Optional[str] = ..., vector_clock: _Optional[_Iterable[int]] = ..., suggested_books: _Optional[_Iterable[_Union[_common_pb2.Book, _Mapping]]] = ...) -> None: ...
+
+class OrderEventRequest(_message.Message):
+    __slots__ = ("order_id", "vector_clock")
+    ORDER_ID_FIELD_NUMBER: _ClassVar[int]
+    VECTOR_CLOCK_FIELD_NUMBER: _ClassVar[int]
+    order_id: str
+    vector_clock: _containers.RepeatedScalarFieldContainer[int]
+    def __init__(self, order_id: _Optional[str] = ..., vector_clock: _Optional[_Iterable[int]] = ...) -> None: ...
+
+class OrderEventResponse(_message.Message):
+    __slots__ = ("success", "reason", "vector_clock")
+    SUCCESS_FIELD_NUMBER: _ClassVar[int]
+    REASON_FIELD_NUMBER: _ClassVar[int]
+    VECTOR_CLOCK_FIELD_NUMBER: _ClassVar[int]
+    success: bool
+    reason: str
+    vector_clock: _containers.RepeatedScalarFieldContainer[int]
+    def __init__(self, success: bool = ..., reason: _Optional[str] = ..., vector_clock: _Optional[_Iterable[int]] = ...) -> None: ...
+
+class ClearOrderRequest(_message.Message):
+    __slots__ = ("order_id", "vector_clock")
+    ORDER_ID_FIELD_NUMBER: _ClassVar[int]
+    VECTOR_CLOCK_FIELD_NUMBER: _ClassVar[int]
+    order_id: str
+    vector_clock: _containers.RepeatedScalarFieldContainer[int]
+    def __init__(self, order_id: _Optional[str] = ..., vector_clock: _Optional[_Iterable[int]] = ...) -> None: ...
+
+class ClearOrderResponse(_message.Message):
+    __slots__ = ("success", "error")
+    SUCCESS_FIELD_NUMBER: _ClassVar[int]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    success: bool
+    error: str
+    def __init__(self, success: bool = ..., error: _Optional[str] = ...) -> None: ...
