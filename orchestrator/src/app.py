@@ -93,178 +93,6 @@ def enqueue_order(order_id):
         return resp
 
 
-# ── Shared execution state ───────────────────────────────────────────────────
-
-class OrderExecution:
-    """Holds shared mutable state for one order's execution."""
-
-    def __init__(self, order_id, initial_vc):
-        self.order_id = order_id
-        self.vector_clock = list(initial_vc)
-        self.vc_lock = threading.Lock()
-
-        self.failure = threading.Event()
-        self.failure_reason = None
-
-        self.suggested_books = []
-
-        # Gates — set when an event completes (success or failure)
-        self.done_a = threading.Event()
-        self.done_b = threading.Event()
-        self.done_c = threading.Event()
-        self.done_d = threading.Event()
-        self.done_e = threading.Event()
-        self.done_f = threading.Event()
-
-    def get_vc(self):
-        with self.vc_lock:
-            return list(self.vector_clock)
-
-    def merge_vc(self, received):
-        with self.vc_lock:
-            self.vector_clock = [max(l, r) for l, r in zip(self.vector_clock, list(received))]
-            return list(self.vector_clock)
-
-    def fail(self, reason):
-        self.failure_reason = reason
-        self.failure.set()
-        # Unblock all gates so waiting threads don't hang
-        for gate in (self.done_a, self.done_b, self.done_c, self.done_d, self.done_e, self.done_f):
-            gate.set()
-
-
-# ── Per-event runners ────────────────────────────────────────────────────────
-
-def run_event_a(state: OrderExecution):
-    """A: TV.VerifyItems — no prerequisites"""
-    if state.failure.is_set():
-        state.done_a.set()
-        return
-    try:
-        with grpc.insecure_channel('transaction_verification:50052') as ch:
-            stub = transaction_verification_grpc.TransactionVerificationServiceStub(ch)
-            resp = stub.VerifyItems(transaction_verification.OrderEventRequest(
-                order_id=state.order_id, vector_clock=state.get_vc()
-            ))
-        state.merge_vc(resp.vector_clock)
-        print(f"[Orch] Event A done | VC={state.get_vc()} | ok={resp.success}")
-        if not resp.success:
-            state.fail(resp.reason)
-    except Exception as e:
-        state.fail(str(e))
-    finally:
-        state.done_a.set()
-
-
-def run_event_b(state: OrderExecution):
-    """B: TV.CheckUserData — no prerequisites"""
-    if state.failure.is_set():
-        state.done_b.set()
-        return
-    try:
-        with grpc.insecure_channel('transaction_verification:50052') as ch:
-            stub = transaction_verification_grpc.TransactionVerificationServiceStub(ch)
-            resp = stub.CheckUserData(transaction_verification.OrderEventRequest(
-                order_id=state.order_id, vector_clock=state.get_vc()
-            ))
-        state.merge_vc(resp.vector_clock)
-        print(f"[Orch] Event B done | VC={state.get_vc()} | ok={resp.success}")
-        if not resp.success:
-            state.fail(resp.reason)
-    except Exception as e:
-        state.fail(str(e))
-    finally:
-        state.done_b.set()
-
-
-def run_event_c(state: OrderExecution):
-    """C: TV.CheckCard — depends on A"""
-    state.done_a.wait()
-    if state.failure.is_set():
-        state.done_c.set()
-        return
-    try:
-        with grpc.insecure_channel('transaction_verification:50052') as ch:
-            stub = transaction_verification_grpc.TransactionVerificationServiceStub(ch)
-            resp = stub.CheckCard(transaction_verification.OrderEventRequest(
-                order_id=state.order_id, vector_clock=state.get_vc()
-            ))
-        state.merge_vc(resp.vector_clock)
-        print(f"[Orch] Event C done | VC={state.get_vc()} | ok={resp.success}")
-        if not resp.success:
-            state.fail(resp.reason)
-    except Exception as e:
-        state.fail(str(e))
-    finally:
-        state.done_c.set()
-
-
-def run_event_d(state: OrderExecution):
-    """D: FD.CheckUserFraud — depends on B"""
-    state.done_b.wait()
-    if state.failure.is_set():
-        state.done_d.set()
-        return
-    try:
-        with grpc.insecure_channel('fraud_detection:50051') as ch:
-            stub = fraud_detection_grpc.FraudDetectionServiceStub(ch)
-            resp = stub.CheckUserFraud(fraud_detection.OrderEventRequest(
-                order_id=state.order_id, vector_clock=state.get_vc()
-            ))
-        state.merge_vc(resp.vector_clock)
-        print(f"[Orch] Event D done | VC={state.get_vc()} | ok={resp.success}")
-        if not resp.success:
-            state.fail(resp.reason)
-    except Exception as e:
-        state.fail(str(e))
-    finally:
-        state.done_d.set()
-
-
-def run_event_e(state: OrderExecution):
-    """E: FD.CheckCardFraud — depends on C and D"""
-    state.done_c.wait()
-    state.done_d.wait()
-    if state.failure.is_set():
-        state.done_e.set()
-        return
-    try:
-        with grpc.insecure_channel('fraud_detection:50051') as ch:
-            stub = fraud_detection_grpc.FraudDetectionServiceStub(ch)
-            resp = stub.CheckCardFraud(fraud_detection.OrderEventRequest(
-                order_id=state.order_id, vector_clock=state.get_vc()
-            ))
-        state.merge_vc(resp.vector_clock)
-        print(f"[Orch] Event E done | VC={state.get_vc()} | ok={resp.success}")
-        if not resp.success:
-            state.fail(resp.reason)
-    except Exception as e:
-        state.fail(str(e))
-    finally:
-        state.done_e.set()
-
-
-def run_event_f(state: OrderExecution):
-    """F: SG.GenerateSuggestions — depends on E"""
-    state.done_e.wait()
-    if state.failure.is_set():
-        state.done_f.set()
-        return
-    try:
-        with grpc.insecure_channel('suggestions:50053') as ch:
-            stub = suggestions_grpc.SuggestionsServiceStub(ch)
-            resp = stub.GenerateSuggestions(suggestions.OrderEventRequest(
-                order_id=state.order_id, vector_clock=state.get_vc()
-            ))
-        state.merge_vc(resp.vector_clock)
-        state.suggested_books = list(resp.suggested_books)
-        print(f"[Orch] Event F done | VC={state.get_vc()} | books={len(state.suggested_books)}")
-    except Exception as e:
-        state.fail(str(e))
-    finally:
-        state.done_f.set()
-
-
 # ── Broadcast ClearOrder ─────────────────────────────────────────────────────
 
 def broadcast_clear(order_id, final_vc):
@@ -293,7 +121,7 @@ def broadcast_clear(order_id, final_vc):
         t.start()
     for t in threads:
         t.join()
-    print(f"[Orch] Broadcast ClearOrder complete | final_VC={final_vc}")
+    print(f"[Orch] Broadcast ClearOrder complete | final_VC={list(final_vc)}")
 
 
 # ── Checkout endpoint ────────────────────────────────────────────────────────
@@ -306,7 +134,7 @@ def checkout():
 
     print(f"[Orch] Starting order {order_id}")
 
-    # ── Init phase (parallel) ──────────────────────────────────────────────
+    # Init phase (parallel) — all services cache data and initialize their VCs
     init_threads = [
         threading.Thread(target=init_transaction, args=(request_data, order_id, initial_vc)),
         threading.Thread(target=init_fraud,       args=(request_data, order_id, initial_vc)),
@@ -318,41 +146,31 @@ def checkout():
         t.join()
     print(f"[Orch] Init complete | order={order_id}")
 
-    # ── Execution phase ────────────────────────────────────────────────────
-    state = OrderExecution(order_id, initial_vc)
+    # Single call to TV — it drives the entire event chain:
+    #   TV: A‖B, C→A, then calls FD
+    #   FD: D→B (called by TV), E→(C,D) (called by TV after both C and D done), then calls SG
+    #   SG: F→E
+    try:
+        with grpc.insecure_channel('transaction_verification:50052') as channel:
+            stub = transaction_verification_grpc.TransactionVerificationServiceStub(channel)
+            resp = stub.ExecuteFlow(transaction_verification.OrderFlowRequest(
+                order_id=order_id,
+                vector_clock=initial_vc
+            ))
+    except Exception as e:
+        return {'orderId': order_id, 'status': 'Order Rejected', 'reason': str(e)}
 
-    exec_threads = [
-        threading.Thread(target=run_event_a, args=(state,)),
-        threading.Thread(target=run_event_b, args=(state,)),
-        threading.Thread(target=run_event_c, args=(state,)),
-        threading.Thread(target=run_event_d, args=(state,)),
-        threading.Thread(target=run_event_e, args=(state,)),
-        threading.Thread(target=run_event_f, args=(state,)),
-    ]
-    for t in exec_threads:
-        t.start()
-    for t in exec_threads:
-        t.join()
+    final_vc = list(resp.vector_clock)
+    print(f"[Orch] ExecuteFlow complete | order={order_id} | success={resp.success} | final_VC={final_vc}")
 
-    final_vc = state.get_vc()
-    print(f"[Orch] Execution complete | final_VC={final_vc}")
-
-    # ── Broadcast clear ────────────────────────────────────────────────────
     broadcast_clear(order_id, final_vc)
 
-    # ── Respond to client ──────────────────────────────────────────────────
-    if state.failure.is_set():
-        return {
-            'orderId': order_id,
-            'status': 'Order Rejected',
-            'reason': state.failure_reason
-        }
+    if not resp.success:
+        return {'orderId': order_id, 'status': 'Order Rejected', 'reason': resp.reason}
 
-    # ── Enqueue approved order ─────────────────────────────────────────────
+    # Enqueue approved order
     try:
         enqueue_resp = enqueue_order(order_id)
-        print(f"[Orch] Enqueue result | order={order_id} | success={enqueue_resp.success} | msg={enqueue_resp.message}")
-
         if not enqueue_resp.success:
             return {
                 'orderId': order_id,
@@ -371,7 +189,7 @@ def checkout():
         'status': 'Order Approved',
         'suggestedBooks': [
             {'bookId': b.book_id, 'title': b.title, 'author': b.author}
-            for b in state.suggested_books
+            for b in resp.suggested_books
         ]
     }
 

@@ -6,9 +6,7 @@ import "common/common.proto";
 
 service TransactionVerificationService {
     rpc InitOrder (TransactionRequest) returns (TransactionResponse);
-    rpc VerifyItems (OrderEventRequest) returns (OrderEventResponse);
-    rpc CheckUserData (OrderEventRequest) returns (OrderEventResponse);
-    rpc CheckCard (OrderEventRequest) returns (OrderEventResponse);
+    rpc ExecuteFlow (OrderFlowRequest) returns (OrderFlowResponse);
     rpc ClearOrder (ClearOrderRequest) returns (ClearOrderResponse);
 }
 
@@ -36,6 +34,18 @@ message TransactionRequest {
 
 message TransactionResponse {
     bool is_valid = 1;
+    string reason = 2;
+    repeated int32 vector_clock = 3;
+    repeated common.Book suggested_books = 4;
+}
+
+message OrderFlowRequest {
+    string order_id = 1;
+    repeated int32 vector_clock = 2;
+}
+
+message OrderFlowResponse {
+    bool success = 1;
     string reason = 2;
     repeated int32 vector_clock = 3;
     repeated common.Book suggested_books = 4;

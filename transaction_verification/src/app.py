@@ -13,6 +13,11 @@ sys.path.insert(0, transaction_verification_grpc_path)
 import transaction_verification_pb2 as transaction_verification
 import transaction_verification_pb2_grpc as transaction_verification_grpc
 
+fraud_detection_grpc_path = os.path.abspath(os.path.join(FILE, '../../../utils/pb/fraud_detection'))
+sys.path.insert(0, fraud_detection_grpc_path)
+import fraud_detection_pb2 as fraud_detection
+import fraud_detection_pb2_grpc as fraud_detection_grpc
+
 import grpc
 from concurrent import futures
 
@@ -24,15 +29,24 @@ class TransactionVerificationService(transaction_verification_grpc.TransactionVe
         self.orders = {}
         self.lock = threading.Lock()
 
-    def merge_clocks(self, local, received):
-        return [max(l, r) for l, r in zip(local, received)]
-
-    def update_vc(self, order_id, received):
+    def _get_vc(self, order_id):
         with self.lock:
-            merged = self.merge_clocks(self.vector_clocks[order_id], list(received))
+            return list(self.vector_clocks[order_id])
+
+    def _merge_and_increment(self, order_id, received):
+        """Merge received VC with local then increment own component. Used on message receive."""
+        with self.lock:
+            local = self.vector_clocks[order_id]
+            merged = [max(l, r) for l, r in zip(local, list(received))]
             merged[self.SERVICE_INDEX] += 1
             self.vector_clocks[order_id] = merged
             return list(merged)
+
+    def _increment(self, order_id):
+        """Increment own component only. Used for internal events."""
+        with self.lock:
+            self.vector_clocks[order_id][self.SERVICE_INDEX] += 1
+            return list(self.vector_clocks[order_id])
 
     def InitOrder(self, request, context):
         order_id = request.order_id
@@ -42,49 +56,122 @@ class TransactionVerificationService(transaction_verification_grpc.TransactionVe
         print(f"[TV] InitOrder {order_id} | VC={self.vector_clocks[order_id]}")
         return transaction_verification.TransactionResponse()
 
-    def VerifyItems(self, request, context):
+    def ExecuteFlow(self, request, context):
         order_id = request.order_id
-        vc = self.update_vc(order_id, request.vector_clock)
-        print(f"[TV] Event A (VerifyItems) {order_id} | VC={vc}")
+        # Receive from orchestrator: merge + increment
+        vc = self._merge_and_increment(order_id, request.vector_clock)
+        print(f"[TV] ExecuteFlow received {order_id} | VC={vc}")
 
-        cached = self.orders[order_id]
-        if len(cached.items) == 0:
-            return transaction_verification.OrderEventResponse(success=False, reason="No items in order", vector_clock=vc)
-        for item in cached.items:
-            if item.quantity <= 0:
-                return transaction_verification.OrderEventResponse(success=False, reason=f"Invalid quantity for {item.name}", vector_clock=vc)
+        failure = threading.Event()
+        failure_reason = [None]
 
-        return transaction_verification.OrderEventResponse(success=True, reason="Items valid", vector_clock=vc)
+        def event_a():
+            """Event A: verify items list is non-empty with valid quantities."""
+            vc_a = self._increment(order_id)
+            print(f"[TV] Event A (VerifyItems) {order_id} | VC={vc_a}")
+            cached = self.orders[order_id]
+            if len(cached.items) == 0:
+                failure_reason[0] = "No items in order"
+                failure.set()
+                return
+            for item in cached.items:
+                if item.quantity <= 0:
+                    failure_reason[0] = f"Invalid quantity for {item.name}"
+                    failure.set()
 
-    def CheckUserData(self, request, context):
-        order_id = request.order_id
-        vc = self.update_vc(order_id, request.vector_clock)
-        print(f"[TV] Event B (CheckUserData) {order_id} | VC={vc}")
+        def event_b():
+            """Event B: check mandatory user fields."""
+            vc_b = self._increment(order_id)
+            print(f"[TV] Event B (CheckUserData) {order_id} | VC={vc_b}")
+            cached = self.orders[order_id]
+            if not cached.user_name or not cached.user_contact:
+                failure_reason[0] = "Missing user data"
+                failure.set()
 
-        cached = self.orders[order_id]
-        if not cached.user_name or not cached.user_contact:
-            return transaction_verification.OrderEventResponse(success=False, reason="Missing user data", vector_clock=vc)
+        def event_c():
+            """Event C: validate credit card format. Depends on A."""
+            vc_c = self._increment(order_id)
+            print(f"[TV] Event C (CheckCard) {order_id} | VC={vc_c}")
+            cached = self.orders[order_id]
+            card_number = cached.credit_card.number.replace(" ", "").replace("-", "")
+            if not card_number.isdigit() or not (13 <= len(card_number) <= 19):
+                failure_reason[0] = "Invalid credit card number"
+                failure.set()
+                return
+            if not re.match(r'^\d{2}/\d{2}$', cached.credit_card.expiration_date):
+                failure_reason[0] = "Invalid expiration date format"
+                failure.set()
+                return
+            if not re.match(r'^\d{3,4}$', cached.credit_card.cvv):
+                failure_reason[0] = "Invalid CVV"
+                failure.set()
+                return
+            if not cached.terms_accepted:
+                failure_reason[0] = "Terms and conditions not accepted"
+                failure.set()
 
-        return transaction_verification.OrderEventResponse(success=True, reason="User data valid", vector_clock=vc)
+        def thread_a_c():
+            """A then C (C depends on A)."""
+            event_a()
+            if failure.is_set():
+                return
+            event_c()
 
-    def CheckCard(self, request, context):
-        order_id = request.order_id
-        vc = self.update_vc(order_id, request.vector_clock)
-        print(f"[TV] Event C (CheckCard) {order_id} | VC={vc}")
+        def thread_b_d():
+            """B then call FD.RunEventD (D depends on B)."""
+            event_b()
+            if failure.is_set():
+                return
+            vc_send = self._get_vc(order_id)
+            try:
+                with grpc.insecure_channel('fraud_detection:50051') as ch:
+                    stub = fraud_detection_grpc.FraudDetectionServiceStub(ch)
+                    resp = stub.RunEventD(fraud_detection.OrderEventRequest(
+                        order_id=order_id, vector_clock=vc_send
+                    ))
+                if not resp.success:
+                    failure_reason[0] = resp.reason
+                    failure.set()
+            except Exception as e:
+                failure_reason[0] = str(e)
+                failure.set()
 
-        cached = self.orders[order_id]
-        card_number = cached.credit_card.number.replace(" ", "").replace("-", "")
+        # A‖B: both threads start concurrently.
+        # C runs after A (in thread_a_c), D runs after B (in thread_b_d, cross-service to FD).
+        # C (TV) and D (FD) can genuinely overlap — different services.
+        t1 = threading.Thread(target=thread_a_c)
+        t2 = threading.Thread(target=thread_b_d)
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
 
-        if not card_number.isdigit() or not (13 <= len(card_number) <= 19):
-            return transaction_verification.OrderEventResponse(success=False, reason="Invalid credit card number", vector_clock=vc)
-        if not re.match(r'^\d{2}/\d{2}$', cached.credit_card.expiration_date):
-            return transaction_verification.OrderEventResponse(success=False, reason="Invalid expiration date format", vector_clock=vc)
-        if not re.match(r'^\d{3,4}$', cached.credit_card.cvv):
-            return transaction_verification.OrderEventResponse(success=False, reason="Invalid CVV", vector_clock=vc)
-        if not cached.terms_accepted:
-            return transaction_verification.OrderEventResponse(success=False, reason="Terms and conditions not accepted", vector_clock=vc)
+        if failure.is_set():
+            return transaction_verification.OrderFlowResponse(
+                success=False, reason=failure_reason[0], vector_clock=self._get_vc(order_id)
+            )
 
-        return transaction_verification.OrderEventResponse(success=True, reason="Card valid", vector_clock=vc)
+        # Both C and D are done. Call FD.RunEventE with TV's current VC (post-C).
+        # FD merges this with its own post-D VC — E's clock will reflect both C and D.
+        vc_send = self._get_vc(order_id)
+        try:
+            with grpc.insecure_channel('fraud_detection:50051') as ch:
+                stub = fraud_detection_grpc.FraudDetectionServiceStub(ch)
+                resp = stub.RunEventE(fraud_detection.OrderEventRequest(
+                    order_id=order_id, vector_clock=vc_send
+                ))
+        except Exception as e:
+            return transaction_verification.OrderFlowResponse(
+                success=False, reason=str(e), vector_clock=self._get_vc(order_id)
+            )
+
+        # Propagate FD's final VC and books (or failure) straight back to orchestrator
+        return transaction_verification.OrderFlowResponse(
+            success=resp.success,
+            reason=resp.reason,
+            vector_clock=resp.vector_clock,
+            suggested_books=resp.suggested_books
+        )
 
     def ClearOrder(self, request, context):
         order_id = request.order_id

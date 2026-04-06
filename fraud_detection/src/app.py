@@ -12,6 +12,11 @@ sys.path.insert(0, fraud_detection_grpc_path)
 import fraud_detection_pb2 as fraud_detection
 import fraud_detection_pb2_grpc as fraud_detection_grpc
 
+suggestions_grpc_path = os.path.abspath(os.path.join(FILE, '../../../utils/pb/suggestions'))
+sys.path.insert(0, suggestions_grpc_path)
+import suggestions_pb2 as suggestions
+import suggestions_pb2_grpc as suggestions_grpc
+
 import grpc
 from concurrent import futures
 
@@ -23,12 +28,15 @@ class FraudDetectionService(fraud_detection_grpc.FraudDetectionServiceServicer):
         self.orders = {}
         self.lock = threading.Lock()
 
-    def merge_clocks(self, local, received):
-        return [max(l, r) for l, r in zip(local, received)]
-
-    def update_vc(self, order_id, received):
+    def _get_vc(self, order_id):
         with self.lock:
-            merged = self.merge_clocks(self.vector_clocks[order_id], list(received))
+            return list(self.vector_clocks[order_id])
+
+    def _merge_and_increment(self, order_id, received):
+        """Merge received VC with local then increment own component. Used on message receive."""
+        with self.lock:
+            local = self.vector_clocks[order_id]
+            merged = [max(l, r) for l, r in zip(local, list(received))]
             merged[self.SERVICE_INDEX] += 1
             self.vector_clocks[order_id] = merged
             return list(merged)
@@ -41,27 +49,55 @@ class FraudDetectionService(fraud_detection_grpc.FraudDetectionServiceServicer):
         print(f"[FD] InitOrder {order_id} | VC={self.vector_clocks[order_id]}")
         return fraud_detection.FraudResponse(is_fraud=False, vector_clock=self.vector_clocks[order_id])
 
-    def CheckUserFraud(self, request, context):
+    def RunEventD(self, request, context):
+        """Event D: check user data for fraud. Called by TV after B completes."""
         order_id = request.order_id
-        vc = self.update_vc(order_id, request.vector_clock)
+        # Receive from TV (post-B VC): merge + increment
+        vc = self._merge_and_increment(order_id, request.vector_clock)
         print(f"[FD] Event D (CheckUserFraud) {order_id} | VC={vc}")
 
         cached = self.orders[order_id]
         if cached.order_amount > 1000:
-            return fraud_detection.OrderEventResponse(success=False, reason="High amount flagged as fraud", vector_clock=vc)
+            return fraud_detection.OrderEventResponse(
+                success=False, reason="High amount flagged as fraud", vector_clock=vc
+            )
 
         return fraud_detection.OrderEventResponse(success=True, reason="Amount OK", vector_clock=vc)
 
-    def CheckCardFraud(self, request, context):
+    def RunEventE(self, request, context):
+        """Event E: check card data for fraud. Called by TV after both C and D complete.
+        TV sends its post-C VC. FD merges it with its own post-D VC, so E's clock
+        correctly reflects both C and D having happened before E."""
         order_id = request.order_id
-        vc = self.update_vc(order_id, request.vector_clock)
+        # Receive from TV (post-C VC): merge with FD's post-D local VC, then increment
+        vc = self._merge_and_increment(order_id, request.vector_clock)
         print(f"[FD] Event E (CheckCardFraud) {order_id} | VC={vc}")
 
         cached = self.orders[order_id]
         if cached.card_number.startswith("999"):
-            return fraud_detection.OrderEventResponse(success=False, reason="Suspicious card prefix", vector_clock=vc)
+            return fraud_detection.OrderFlowResponse(
+                success=False, reason="Suspicious card prefix", vector_clock=vc
+            )
 
-        return fraud_detection.OrderEventResponse(success=True, reason="Card OK", vector_clock=vc)
+        # Call SG.GenerateSuggestions — send current FD VC (post-E)
+        vc_send = self._get_vc(order_id)
+        try:
+            with grpc.insecure_channel('suggestions:50053') as ch:
+                stub = suggestions_grpc.SuggestionsServiceStub(ch)
+                resp = stub.GenerateSuggestions(suggestions.OrderEventRequest(
+                    order_id=order_id, vector_clock=vc_send
+                ))
+        except Exception as e:
+            return fraud_detection.OrderFlowResponse(
+                success=False, reason=str(e), vector_clock=self._get_vc(order_id)
+            )
+
+        return fraud_detection.OrderFlowResponse(
+            success=resp.success,
+            reason=resp.reason,
+            vector_clock=resp.vector_clock,
+            suggested_books=resp.suggested_books
+        )
 
     def ClearOrder(self, request, context):
         order_id = request.order_id

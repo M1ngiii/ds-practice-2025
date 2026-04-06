@@ -39,20 +39,10 @@ class TransactionVerificationServiceStub(object):
                 request_serializer=transaction__verification_dot_transaction__verification__pb2.TransactionRequest.SerializeToString,
                 response_deserializer=transaction__verification_dot_transaction__verification__pb2.TransactionResponse.FromString,
                 _registered_method=True)
-        self.VerifyItems = channel.unary_unary(
-                '/transaction_verification.TransactionVerificationService/VerifyItems',
-                request_serializer=transaction__verification_dot_transaction__verification__pb2.OrderEventRequest.SerializeToString,
-                response_deserializer=transaction__verification_dot_transaction__verification__pb2.OrderEventResponse.FromString,
-                _registered_method=True)
-        self.CheckUserData = channel.unary_unary(
-                '/transaction_verification.TransactionVerificationService/CheckUserData',
-                request_serializer=transaction__verification_dot_transaction__verification__pb2.OrderEventRequest.SerializeToString,
-                response_deserializer=transaction__verification_dot_transaction__verification__pb2.OrderEventResponse.FromString,
-                _registered_method=True)
-        self.CheckCard = channel.unary_unary(
-                '/transaction_verification.TransactionVerificationService/CheckCard',
-                request_serializer=transaction__verification_dot_transaction__verification__pb2.OrderEventRequest.SerializeToString,
-                response_deserializer=transaction__verification_dot_transaction__verification__pb2.OrderEventResponse.FromString,
+        self.ExecuteFlow = channel.unary_unary(
+                '/transaction_verification.TransactionVerificationService/ExecuteFlow',
+                request_serializer=transaction__verification_dot_transaction__verification__pb2.OrderFlowRequest.SerializeToString,
+                response_deserializer=transaction__verification_dot_transaction__verification__pb2.OrderFlowResponse.FromString,
                 _registered_method=True)
         self.ClearOrder = channel.unary_unary(
                 '/transaction_verification.TransactionVerificationService/ClearOrder',
@@ -70,19 +60,7 @@ class TransactionVerificationServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def VerifyItems(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def CheckUserData(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def CheckCard(self, request, context):
+    def ExecuteFlow(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -102,20 +80,10 @@ def add_TransactionVerificationServiceServicer_to_server(servicer, server):
                     request_deserializer=transaction__verification_dot_transaction__verification__pb2.TransactionRequest.FromString,
                     response_serializer=transaction__verification_dot_transaction__verification__pb2.TransactionResponse.SerializeToString,
             ),
-            'VerifyItems': grpc.unary_unary_rpc_method_handler(
-                    servicer.VerifyItems,
-                    request_deserializer=transaction__verification_dot_transaction__verification__pb2.OrderEventRequest.FromString,
-                    response_serializer=transaction__verification_dot_transaction__verification__pb2.OrderEventResponse.SerializeToString,
-            ),
-            'CheckUserData': grpc.unary_unary_rpc_method_handler(
-                    servicer.CheckUserData,
-                    request_deserializer=transaction__verification_dot_transaction__verification__pb2.OrderEventRequest.FromString,
-                    response_serializer=transaction__verification_dot_transaction__verification__pb2.OrderEventResponse.SerializeToString,
-            ),
-            'CheckCard': grpc.unary_unary_rpc_method_handler(
-                    servicer.CheckCard,
-                    request_deserializer=transaction__verification_dot_transaction__verification__pb2.OrderEventRequest.FromString,
-                    response_serializer=transaction__verification_dot_transaction__verification__pb2.OrderEventResponse.SerializeToString,
+            'ExecuteFlow': grpc.unary_unary_rpc_method_handler(
+                    servicer.ExecuteFlow,
+                    request_deserializer=transaction__verification_dot_transaction__verification__pb2.OrderFlowRequest.FromString,
+                    response_serializer=transaction__verification_dot_transaction__verification__pb2.OrderFlowResponse.SerializeToString,
             ),
             'ClearOrder': grpc.unary_unary_rpc_method_handler(
                     servicer.ClearOrder,
@@ -161,7 +129,7 @@ class TransactionVerificationService(object):
             _registered_method=True)
 
     @staticmethod
-    def VerifyItems(request,
+    def ExecuteFlow(request,
             target,
             options=(),
             channel_credentials=None,
@@ -174,63 +142,9 @@ class TransactionVerificationService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/transaction_verification.TransactionVerificationService/VerifyItems',
-            transaction__verification_dot_transaction__verification__pb2.OrderEventRequest.SerializeToString,
-            transaction__verification_dot_transaction__verification__pb2.OrderEventResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def CheckUserData(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/transaction_verification.TransactionVerificationService/CheckUserData',
-            transaction__verification_dot_transaction__verification__pb2.OrderEventRequest.SerializeToString,
-            transaction__verification_dot_transaction__verification__pb2.OrderEventResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def CheckCard(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/transaction_verification.TransactionVerificationService/CheckCard',
-            transaction__verification_dot_transaction__verification__pb2.OrderEventRequest.SerializeToString,
-            transaction__verification_dot_transaction__verification__pb2.OrderEventResponse.FromString,
+            '/transaction_verification.TransactionVerificationService/ExecuteFlow',
+            transaction__verification_dot_transaction__verification__pb2.OrderFlowRequest.SerializeToString,
+            transaction__verification_dot_transaction__verification__pb2.OrderFlowResponse.FromString,
             options,
             channel_credentials,
             insecure,
