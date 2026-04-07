@@ -8,7 +8,7 @@ Note: The mermaid diagram assets were generated with the help of Claude Code.
 
 ### Architecture
 
-The system is a **microservice architecture** deployed as Docker containers on a shared bridge network (`docker compose`). Services are loosely coupled and communicate exclusively over the network — there is no shared memory or shared filesystem.
+The system is a **microservice architecture** deployed as Docker containers on a shared bridge network (`docker compose`). Services are loosely coupled and communicate exclusively over the network. There is no shared memory or shared filesystem.
 
 There are seven distinct services:
 
@@ -38,19 +38,19 @@ OrderExecutor ──gRPC──► OrderQueue  (leader election + dequeue)
 
 - **Frontend → Orchestrator**: plain HTTP POST `/checkout` with a JSON body.
 - **Orchestrator → TransactionVerification**: single `ExecuteFlow` gRPC call that drives the entire event chain (A–F). TV internally calls FD for events D and E; FD internally calls SG for event F. Vector clocks are piggybacked on every request and response in this chain.
-- **Orchestrator → FraudDetection / Suggestions**: gRPC for `InitOrder` and `ClearOrder` only — not for event execution.
+- **Orchestrator → FraudDetection / Suggestions**: gRPC for `InitOrder` and `ClearOrder` only (not for event execution).
 - **Orchestrator → OrderQueue**: gRPC `Enqueue` after all verification events pass.
 - **OrderExecutor → OrderQueue**: gRPC `TryBecomeLeader`, `RenewLeadership`, `Dequeue`. Two replicas compete; only the elected leader may dequeue.
 
 ### Timing and Ordering Guarantees
 
-The system assumes an **asynchronous network** — messages can be delayed arbitrarily but are eventually delivered. There are no timeouts on gRPC calls beyond Python's default. No total ordering of events is guaranteed; instead, **vector clocks** maintain causal ordering across the three verification services (TV, FD, SG).
+The system assumes an **asynchronous network** - messages can be delayed arbitrarily but are eventually delivered. There are no timeouts on gRPC calls beyond Python's default. No total ordering of events is guaranteed; instead, **vector clocks** maintain causal ordering across the three verification services (TV, FD, SG).
 
 Events within one order's lifecycle are partially ordered by `TransactionVerification`'s `ExecuteFlow` method using Python threads:
 
 - A ∥ B (both threads start concurrently)
 - A → C (C runs in the same thread as A, after A completes)
-- B → D (D runs in the same thread as B, after B — D is a cross-service gRPC call to FD)
+- B → D (D runs in the same thread as B, after B - D is a cross-service gRPC call to FD)
 - C, D → E (TV calls `FD.RunEventE` only after both threads join; E executes inside FD)
 - E → F (FD calls `SG.GenerateSuggestions` from within `RunEventE`; F executes inside SG)
 
@@ -106,7 +106,7 @@ Lease-based leader election in `order_queue/src/app.py`:
 - **Lease duration**: `LEASE_SECONDS = 5`
 - **`TryBecomeLeader()`**: if no live leader, the caller claims leadership and sets expiry to `now + 5s`
 - **`RenewLeadership()`**: current leader extends its lease; fails if expired or called by a non-leader
-- **Mutual exclusion**: the dequeue RPC rejects any caller that isn't the current `leader_id` — the queue itself is the authority, not a separate lock service
+- **Mutual exclusion**: the dequeue RPC rejects any caller that isn't the current `leader_id` - the queue itself is the authority, not a separate lock service
 
 If the leader dies, the lease expires and the next executor to call `TryBecomeLeader` wins. Almost similar to bully algoritm except we don't check for ID, just FCFS
 
@@ -199,11 +199,11 @@ merged[SERVICE_INDEX] += 1
 
 **TransactionVerification** (`transaction_verification/src/app.py`) drives the event DAG from within `ExecuteFlow`:
 - **ExecuteFlow** itself does a merge-and-increment (TV++) before starting any events
-- **A** (VerifyItems), **B** (CheckUserData) — run concurrently in separate threads; each does an internal TV++
-- **C** (CheckCard) — runs after A in the same thread; does an internal TV++
-- **D** (CheckUserFraud) — runs after B in the same thread; cross-service gRPC call to `FD.RunEventD`
-- **E** (CheckCardFraud) — TV calls `FD.RunEventE` after both threads join, passing TV's post-C VC
-- **F** (GenerateSuggestions) — FD calls `SG.GenerateSuggestions` from within `RunEventE`
+- **A** (VerifyItems), **B** (CheckUserData) - run concurrently in separate threads; each does an internal TV++
+- **C** (CheckCard) - runs after A in the same thread; does an internal TV++
+- **D** (CheckUserFraud) - runs after B in the same thread; cross-service gRPC call to `FD.RunEventD`
+- **E** (CheckCardFraud) - TV calls `FD.RunEventE` after both threads join, passing TV's post-C VC
+- **F** (GenerateSuggestions) - FD calls `SG.GenerateSuggestions` from within `RunEventE`
 
 The orchestrator makes a single `TV.ExecuteFlow()` call; it does not track or merge VCs itself. The final VC bubbles back through FD → TV → Orchestrator. On cleanup, each service validates the final VC has no rollback via `ClearOrder`.
 
