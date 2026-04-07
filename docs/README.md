@@ -44,7 +44,7 @@ OrderExecutor ──gRPC──► OrderQueue  (leader election + dequeue)
 
 ### Timing and Ordering Guarantees
 
-The system assumes an **asynchronous network** - messages can be delayed arbitrarily but are eventually delivered. There are no timeouts on gRPC calls beyond Python's default. No total ordering of events is guaranteed; instead, **vector clocks** maintain causal ordering across the three verification services (TV, FD, SG).
+The system assumes an **asynchronous network** - messages can be delayed arbitrarily but are eventually delivered. There are no timeouts on gRPC calls beyond Python's default. No total ordering of events is guaranteed. Instead, **vector clocks** maintain causal ordering across the three verification services (TV, FD, SG).
 
 Events within one order's lifecycle are partially ordered by `TransactionVerification`'s `ExecuteFlow` method using Python threads:
 
@@ -81,7 +81,7 @@ A service restart causes permanent loss of all in-flight order state.
 - **Single points of failure**: orchestrator, order_queue, and each verification service are each a single instance. Any one crashing halts or rejects all orders touching that service.
 - **Limited redundancy**: only `order_executor` runs as two replicas (`scale: 2`), providing failover for order consumption via lease-based election.
 - **No split-brain for queue access**: the order_queue service is the single authority for both the queue state and leadership. An executor can only dequeue if it holds the current lease, preventing double-processing.
-- **No split-brain for verification**: each verification service is a single instance with an in-memory lock; concurrent requests for the same order are serialised.
+- **No split-brain for verification**: each verification service is a single instance with an in-memory lock. Concurrent requests for the same order are serialised.
 
 ---
 
@@ -205,7 +205,7 @@ merged[SERVICE_INDEX] += 1
 - **E** (CheckCardFraud) - TV calls `FD.RunEventE` after both threads join, passing TV's post-C VC
 - **F** (GenerateSuggestions) - FD calls `SG.GenerateSuggestions` from within `RunEventE`
 
-The orchestrator makes a single `TV.ExecuteFlow()` call; it does not track or merge VCs itself. The final VC bubbles back through FD → TV → Orchestrator. On cleanup, each service validates the final VC has no rollback via `ClearOrder`.
+The orchestrator makes a single `TV.ExecuteFlow()` call. It does not track or merge VCs itself. The final VC bubbles back through FD → TV → Orchestrator. On cleanup, each service validates the final VC has no rollback via `ClearOrder`.
 
 ### Event Dependency DAG
 
@@ -233,7 +233,7 @@ A and B are concurrent (no edge between them). All others have explicit causal d
 
 **Diagram 2**: one valid execution, showing the vector clock value at each service after every event. VC format: `[TV, FD, SG]`.
 
-The orchestrator makes a single `TV.ExecuteFlow([0,0,0])` call. TV immediately does a merge-and-increment, then launches two concurrent threads. A and B race for TV's lock; A wins, then B, then C. Thread t2 sends TV's post-B VC to `FD.RunEventD`, then FD processes D concurrently with C running in TV. After both threads join, TV calls `FD.RunEventE` with the post-C VC. FD merges its post-D VC with the received post-C VC, then calls `SG.GenerateSuggestions`. The final VC `[4,2,1]` reflects 4 TV increments (ExecuteFlow, A, B, C), 2 FD increments (D, E), and 1 SG increment (F).
+The orchestrator makes a single `TV.ExecuteFlow([0,0,0])` call. TV immediately does a merge-and-increment, then launches two concurrent threads. A and B race for TV's lock: A wins, then B, then C. Thread t2 sends TV's post-B VC to `FD.RunEventD`, then FD processes D concurrently with C running in TV. After both threads join, TV calls `FD.RunEventE` with the post-C VC. FD merges its post-D VC with the received post-C VC, then calls `SG.GenerateSuggestions`. The final VC `[4,2,1]` reflects 4 TV increments (ExecuteFlow, A, B, C), 2 FD increments (D, E), and 1 SG increment (F).
 
 ```mermaid
 sequenceDiagram
