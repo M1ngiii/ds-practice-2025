@@ -20,7 +20,7 @@ There are seven distinct services:
 | `fraud_detection` | Checks for user and card fraud | gRPC | 50051 |
 | `suggestions` | Generates book recommendations | gRPC | 50053 |
 | `order_queue` | In-memory FIFO queue + leader election authority | gRPC | 50054 |
-| `order_executor` | Consumes approved orders from the queue (×2 replicas) | gRPC (client only) | — |
+| `order_executor` | Consumes approved orders from the queue (×2 replicas) | gRPC server (`Ping`) + gRPC client (to OrderQueue) | 50061 (internal only) |
 
 ### Communication
 
@@ -28,16 +28,17 @@ There are seven distinct services:
 Browser
   │  HTTP/REST (JSON)
   ▼
-Orchestrator ──gRPC──► TransactionVerification
-             ──gRPC──► FraudDetection
-             ──gRPC──► Suggestions
-             ──gRPC──► OrderQueue  (enqueue approved orders)
+Orchestrator ──gRPC──► TransactionVerification ──gRPC──► FraudDetection ──gRPC──► Suggestions
+             ──gRPC──► FraudDetection      (Init / ClearOrder only)
+             ──gRPC──► Suggestions         (Init / ClearOrder only)
+             ──gRPC──► OrderQueue          (enqueue approved orders)
 
 OrderExecutor ──gRPC──► OrderQueue  (leader election + dequeue)
 ```
 
 - **Frontend → Orchestrator**: plain HTTP POST `/checkout` with a JSON body.
-- **Orchestrator → verification services**: gRPC with vector clocks piggybacked on every request and response. Six events (A–F) execute concurrently where dependencies allow (see event DAG below).
+- **Orchestrator → TransactionVerification**: single `ExecuteFlow` gRPC call that drives the entire event chain (A–F). TV internally calls FD for events D and E; FD internally calls SG for event F. Vector clocks are piggybacked on every request and response in this chain.
+- **Orchestrator → FraudDetection / Suggestions**: gRPC for `InitOrder` and `ClearOrder` only — not for event execution.
 - **Orchestrator → OrderQueue**: gRPC `Enqueue` after all verification events pass.
 - **OrderExecutor → OrderQueue**: gRPC `TryBecomeLeader`, `RenewLeadership`, `Dequeue`. Two replicas compete; only the elected leader may dequeue.
 
@@ -45,10 +46,13 @@ OrderExecutor ──gRPC──► OrderQueue  (leader election + dequeue)
 
 The system assumes an **asynchronous network** — messages can be delayed arbitrarily but are eventually delivered. There are no timeouts on gRPC calls beyond Python's default. No total ordering of events is guaranteed; instead, **vector clocks** maintain causal ordering across the three verification services (TV, FD, SG).
 
-Events within one order's lifecycle are partially ordered by the orchestrator's `threading.Event` gates:
+Events within one order's lifecycle are partially ordered by `TransactionVerification`'s `ExecuteFlow` method using Python threads:
 
-- A ∥ B → C → E → F  
-- B → D → E → F
+- A ∥ B (both threads start concurrently)
+- A → C (C runs in the same thread as A, after A completes)
+- B → D (D runs in the same thread as B, after B — D is a cross-service gRPC call to FD)
+- C, D → E (TV calls `FD.RunEventE` only after both threads join; E executes inside FD)
+- E → F (FD calls `SG.GenerateSuggestions` from within `RunEventE`; F executes inside SG)
 
 Events A and B are concurrent with respect to each other. All other pairs have a defined happens-before relationship.
 
@@ -65,7 +69,7 @@ A service restart causes permanent loss of all in-flight order state.
 
 | Failure | Effect | Recovery |
 |---------|--------|----------|
-| Verification service crash (TV, FD, or SG) mid-order | gRPC exception caught by orchestrator → `state.fail()` → order rejected; all waiting threads unblocked | Manual restart; no in-flight recovery |
+| Verification service crash (TV, FD, or SG) mid-order | gRPC exception caught by orchestrator → order rejected. Any threads running inside TV die with the process. | Manual restart; no in-flight recovery |
 | Orchestrator crash | Client receives no response; order is lost | Manual restart; idempotency not guaranteed |
 | Leader executor crash | Lease expires after 5 s; other replica wins `TryBecomeLeader` | Automatic; up to 5 s gap with no dequeuing |
 | Both executors crash | Queue accumulates orders; no processing until a replica restarts | Manual restart |
@@ -137,11 +141,11 @@ sequenceDiagram
     participant Q as OrderQueue
 
     loop every 1s
+        E1->>Q: RenewLeadership(id=E1)
+        Q-->>E1: ok, expiry=now+5s
         E1->>Q: Dequeue(executor_id=E1)
         Q-->>E1: order_id=order-42
         Note over E1: execute_order(order-42)
-        E1->>Q: RenewLeadership(id=E1)
-        Q-->>E1: ok, expiry=now+5s
     end
 
     E2->>Q: TryBecomeLeader(id=E2)
@@ -193,14 +197,15 @@ merged = [max(l, r) for l, r in zip(local, received)]
 merged[SERVICE_INDEX] += 1
 ```
 
-**Orchestrator** (`orchestrator/src/app.py`) drives the event DAG using `threading.Event` gates:
-- **A** (VerifyItems), **B** (CheckUserData) — run concurrently, no dependencies
-- **C** (CheckCard) — waits on A
-- **D** (CheckUserFraud) — waits on B
-- **E** (CheckCardFraud) — waits on C and D
-- **F** (GenerateSuggestions) — waits on E
+**TransactionVerification** (`transaction_verification/src/app.py`) drives the event DAG from within `ExecuteFlow`:
+- **ExecuteFlow** itself does a merge-and-increment (TV++) before starting any events
+- **A** (VerifyItems), **B** (CheckUserData) — run concurrently in separate threads; each does an internal TV++
+- **C** (CheckCard) — runs after A in the same thread; does an internal TV++
+- **D** (CheckUserFraud) — runs after B in the same thread; cross-service gRPC call to `FD.RunEventD`
+- **E** (CheckCardFraud) — TV calls `FD.RunEventE` after both threads join, passing TV's post-C VC
+- **F** (GenerateSuggestions) — FD calls `SG.GenerateSuggestions` from within `RunEventE`
 
-After each RPC, the orchestrator merges the response VC back into its local state. On cleanup, each service validates the final VC has no rollback via `ClearOrder`.
+The orchestrator makes a single `TV.ExecuteFlow()` call; it does not track or merge VCs itself. The final VC bubbles back through FD → TV → Orchestrator. On cleanup, each service validates the final VC has no rollback via `ClearOrder`.
 
 ### Event Dependency DAG
 
@@ -222,13 +227,13 @@ graph LR
     E --> F
 ```
 
-A and B are concurrent (no edge between them). All others have explicit causal dependencies enforced via `threading.Event` gates in the orchestrator.
+A and B are concurrent (no edge between them). All others have explicit causal dependencies enforced by TV's `ExecuteFlow` (threads + join) and the cross-service call chain (TV → FD → SG).
 
 ### VC Execution Trace
 
 **Diagram 2**: one valid execution, showing the vector clock value at each service after every event. VC format: `[TV, FD, SG]`.
 
-A and B both read `O.vc=[0,0,0]` before either completes. TV processes them sequentially under a lock; A wins the race in this trace.
+The orchestrator makes a single `TV.ExecuteFlow([0,0,0])` call. TV immediately does a merge-and-increment, then launches two concurrent threads. A and B race for TV's lock; A wins, then B, then C. Thread t2 sends TV's post-B VC to `FD.RunEventD`, then FD processes D concurrently with C running in TV. After both threads join, TV calls `FD.RunEventE` with the post-C VC. FD merges its post-D VC with the received post-C VC, then calls `SG.GenerateSuggestions`. The final VC `[4,2,1]` reflects 4 TV increments (ExecuteFlow, A, B, C), 2 FD increments (D, E), and 1 SG increment (F).
 
 ```mermaid
 sequenceDiagram
@@ -239,47 +244,31 @@ sequenceDiagram
 
     Note over O,SG: Init — all services store initial_vc=[0,0,0]
 
-    Note over O: O.vc = [0,0,0]
+    O->>TV: ExecuteFlow | send VC=[0,0,0]
+    Note over TV: merge([0,0,0],[0,0,0])+TV++ → [1,0,0]
 
-    par A ∥ B  (both threads read O.vc=[0,0,0])
-        O->>TV: A: VerifyItems | send VC=[0,0,0]
-        Note over TV: merge([0,0,0],[0,0,0])+TV++ → [1,0,0]
-        TV-->>O: VC=[1,0,0]
-        Note over O: merge → O.vc=[1,0,0]
-    and
-        O->>TV: B: CheckUserData | send VC=[0,0,0]
-        Note over TV: TV local=[1,0,0]<br/>merge([1,0,0],[0,0,0])+TV++ → [2,0,0]
-        TV-->>O: VC=[2,0,0]
-        Note over O: merge → O.vc=[2,0,0]
+    par Thread t1: A then C
+        Note over TV: Event A (VerifyItems)<br/>TV++ → [2,0,0]
+        Note over TV: Event C (CheckCard)<br/>TV++ → [4,0,0]
+    and Thread t2: B then D
+        Note over TV: Event B (CheckUserData)<br/>TV++ → [3,0,0]
+        Note over TV: get VC=[3,0,0] to send for D
+        TV->>FD: RunEventD | send VC=[3,0,0]
+        Note over FD: merge([0,0,0],[3,0,0])+FD++ → [3,1,0]
+        Note over TV,FD: C (TV) and D (FD) execute concurrently<br/>— different services, no lock contention
+        FD-->>TV: VC=[3,1,0]
     end
 
-    Note over O: done_a ✓  done_b ✓ → unblock C and D
+    Note over TV: t1.join() ✓  t2.join() ✓<br/>post-C VC=[4,0,0]
 
-    O->>TV: C: CheckCard | send VC=[2,0,0]
-    Note over TV: merge([2,0,0],[2,0,0])+TV++ → [3,0,0]
-    TV-->>O: VC=[3,0,0]
-    Note over O: merge → O.vc=[3,0,0]
-
-    Note over O: done_c ✓ → unblock D (if not yet done)
-
-    O->>FD: D: CheckUserFraud | send VC=[3,0,0]
-    Note over FD: merge([0,0,0],[3,0,0])+FD++ → [3,1,0]
-    FD-->>O: VC=[3,1,0]
-    Note over O: merge → O.vc=[3,1,0]
-
-    Note over O: done_c ✓  done_d ✓ → unblock E
-
-    O->>FD: E: CheckCardFraud | send VC=[3,1,0]
-    Note over FD: merge([3,1,0],[3,1,0])+FD++ → [3,2,0]
-    FD-->>O: VC=[3,2,0]
-    Note over O: merge → O.vc=[3,2,0]
-
-    Note over O: done_e ✓ → unblock F
-
-    O->>SG: F: GenerateSuggestions | send VC=[3,2,0]
-    Note over SG: merge([0,0,0],[3,2,0])+SG++ → [3,2,1]
-    SG-->>O: VC=[3,2,1]
-    Note over O: final O.vc=[3,2,1] ✓
+    TV->>FD: RunEventE | send VC=[4,0,0]
+    Note over FD: FD local=[3,1,0]<br/>merge([3,1,0],[4,0,0])+FD++ → [4,2,0]
+    FD->>SG: GenerateSuggestions | send VC=[4,2,0]
+    Note over SG: merge([0,0,0],[4,2,0])+SG++ → [4,2,1]
+    SG-->>FD: VC=[4,2,1], books
+    FD-->>TV: VC=[4,2,1], books
+    TV-->>O: VC=[4,2,1], books
+    Note over O: final VC=[4,2,1] ✓
 ```
 
 ---
@@ -300,7 +289,7 @@ No dedicated logging facility, however we use pure stdout `print()` to docker lo
 Most log lines include the order ID and current vector clock, e.g.:
 ```
 [TV] Event A (VerifyItems) order-123 | VC=[1, 0, 0]
-[Orch] Execution complete | final_VC=[3, 2, 1]
+[Orch] ExecuteFlow complete | final_VC=[4, 2, 1]
 ```
 
 `PYTHONUNBUFFERED=TRUE` is set in `docker-compose.yaml` for all services so logs appear immediately in container stdout. No log files or aggregation.
