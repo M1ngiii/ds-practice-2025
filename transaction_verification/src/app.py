@@ -165,12 +165,11 @@ class TransactionVerificationService(transaction_verification_grpc.TransactionVe
                 success=False, reason=str(e), vector_clock=self._get_vc(order_id)
             )
 
-        # Propagate FD's final VC and books (or failure) straight back to orchestrator
+        # Propagate FD's result back to orchestrator; books were sent directly by SG
         return transaction_verification.OrderFlowResponse(
             success=resp.success,
             reason=resp.reason,
-            vector_clock=resp.vector_clock,
-            suggested_books=resp.suggested_books
+            vector_clock=resp.vector_clock
         )
 
     def ClearOrder(self, request, context):

@@ -47,7 +47,7 @@ class FraudDetectionServiceStub(object):
         self.RunEventE = channel.unary_unary(
                 '/fraud_detection.FraudDetectionService/RunEventE',
                 request_serializer=fraud__detection_dot_fraud__detection__pb2.OrderEventRequest.SerializeToString,
-                response_deserializer=fraud__detection_dot_fraud__detection__pb2.OrderFlowResponse.FromString,
+                response_deserializer=fraud__detection_dot_fraud__detection__pb2.OrderEventResponse.FromString,
                 _registered_method=True)
         self.ClearOrder = channel.unary_unary(
                 '/fraud_detection.FraudDetectionService/ClearOrder',
@@ -99,7 +99,7 @@ def add_FraudDetectionServiceServicer_to_server(servicer, server):
             'RunEventE': grpc.unary_unary_rpc_method_handler(
                     servicer.RunEventE,
                     request_deserializer=fraud__detection_dot_fraud__detection__pb2.OrderEventRequest.FromString,
-                    response_serializer=fraud__detection_dot_fraud__detection__pb2.OrderFlowResponse.SerializeToString,
+                    response_serializer=fraud__detection_dot_fraud__detection__pb2.OrderEventResponse.SerializeToString,
             ),
             'ClearOrder': grpc.unary_unary_rpc_method_handler(
                     servicer.ClearOrder,
@@ -187,7 +187,7 @@ class FraudDetectionService(object):
             target,
             '/fraud_detection.FraudDetectionService/RunEventE',
             fraud__detection_dot_fraud__detection__pb2.OrderEventRequest.SerializeToString,
-            fraud__detection_dot_fraud__detection__pb2.OrderFlowResponse.FromString,
+            fraud__detection_dot_fraud__detection__pb2.OrderEventResponse.FromString,
             options,
             channel_credentials,
             insecure,

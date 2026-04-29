@@ -22,28 +22,27 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
-from common import common_pb2 as common_dot_common__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1dsuggestions/suggestions.proto\x12\x0bsuggestions\x1a\x13\x63ommon/common.proto\"P\n\x12SuggestionsRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\x12\x12\n\nitem_names\x18\x03 \x03(\t\"R\n\x13SuggestionsResponse\x12%\n\x0fsuggested_books\x18\x01 \x03(\x0b\x32\x0c.common.Book\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\";\n\x11OrderEventRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\"r\n\x12OrderEventResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0e\n\x06reason\x18\x02 \x01(\t\x12\x14\n\x0cvector_clock\x18\x03 \x03(\x05\x12%\n\x0fsuggested_books\x18\x04 \x03(\x0b\x32\x0c.common.Book\";\n\x11\x43learOrderRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\"4\n\x12\x43learOrderResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\r\n\x05\x65rror\x18\x02 \x01(\t2\x8b\x02\n\x12SuggestionsService\x12N\n\tInitOrder\x12\x1f.suggestions.SuggestionsRequest\x1a .suggestions.SuggestionsResponse\x12V\n\x13GenerateSuggestions\x12\x1e.suggestions.OrderEventRequest\x1a\x1f.suggestions.OrderEventResponse\x12M\n\nClearOrder\x12\x1e.suggestions.ClearOrderRequest\x1a\x1f.suggestions.ClearOrderResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1dsuggestions/suggestions.proto\x12\x0bsuggestions\"P\n\x12SuggestionsRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\x12\x12\n\nitem_names\x18\x03 \x03(\t\"+\n\x13SuggestionsResponse\x12\x14\n\x0cvector_clock\x18\x01 \x03(\x05\";\n\x11OrderEventRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\"K\n\x12OrderEventResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0e\n\x06reason\x18\x02 \x01(\t\x12\x14\n\x0cvector_clock\x18\x03 \x03(\x05\";\n\x11\x43learOrderRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\"4\n\x12\x43learOrderResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\r\n\x05\x65rror\x18\x02 \x01(\t2\x8b\x02\n\x12SuggestionsService\x12N\n\tInitOrder\x12\x1f.suggestions.SuggestionsRequest\x1a .suggestions.SuggestionsResponse\x12V\n\x13GenerateSuggestions\x12\x1e.suggestions.OrderEventRequest\x1a\x1f.suggestions.OrderEventResponse\x12M\n\nClearOrder\x12\x1e.suggestions.ClearOrderRequest\x1a\x1f.suggestions.ClearOrderResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'suggestions.suggestions_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_SUGGESTIONSREQUEST']._serialized_start=67
-  _globals['_SUGGESTIONSREQUEST']._serialized_end=147
-  _globals['_SUGGESTIONSRESPONSE']._serialized_start=149
-  _globals['_SUGGESTIONSRESPONSE']._serialized_end=231
-  _globals['_ORDEREVENTREQUEST']._serialized_start=233
-  _globals['_ORDEREVENTREQUEST']._serialized_end=292
-  _globals['_ORDEREVENTRESPONSE']._serialized_start=294
-  _globals['_ORDEREVENTRESPONSE']._serialized_end=408
-  _globals['_CLEARORDERREQUEST']._serialized_start=410
-  _globals['_CLEARORDERREQUEST']._serialized_end=469
-  _globals['_CLEARORDERRESPONSE']._serialized_start=471
-  _globals['_CLEARORDERRESPONSE']._serialized_end=523
-  _globals['_SUGGESTIONSSERVICE']._serialized_start=526
-  _globals['_SUGGESTIONSSERVICE']._serialized_end=793
+  _globals['_SUGGESTIONSREQUEST']._serialized_start=46
+  _globals['_SUGGESTIONSREQUEST']._serialized_end=126
+  _globals['_SUGGESTIONSRESPONSE']._serialized_start=128
+  _globals['_SUGGESTIONSRESPONSE']._serialized_end=171
+  _globals['_ORDEREVENTREQUEST']._serialized_start=173
+  _globals['_ORDEREVENTREQUEST']._serialized_end=232
+  _globals['_ORDEREVENTRESPONSE']._serialized_start=234
+  _globals['_ORDEREVENTRESPONSE']._serialized_end=309
+  _globals['_CLEARORDERREQUEST']._serialized_start=311
+  _globals['_CLEARORDERREQUEST']._serialized_end=370
+  _globals['_CLEARORDERRESPONSE']._serialized_start=372
+  _globals['_CLEARORDERRESPONSE']._serialized_end=424
+  _globals['_SUGGESTIONSSERVICE']._serialized_start=427
+  _globals['_SUGGESTIONSSERVICE']._serialized_end=694
 # @@protoc_insertion_point(module_scope)

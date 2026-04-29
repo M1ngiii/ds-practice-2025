@@ -2,12 +2,10 @@ syntax = "proto3";
 
 package fraud_detection;
 
-import "common/common.proto";
-
 service FraudDetectionService {
     rpc InitOrder (FraudRequest) returns (FraudResponse);
     rpc RunEventD (OrderEventRequest) returns (OrderEventResponse);
-    rpc RunEventE (OrderEventRequest) returns (OrderFlowResponse);
+    rpc RunEventE (OrderEventRequest) returns (OrderEventResponse);
     rpc ClearOrder (ClearOrderRequest) returns (ClearOrderResponse);
 }
 
@@ -23,7 +21,6 @@ message FraudRequest {
 message FraudResponse {
     bool is_fraud = 1;
     repeated int32 vector_clock = 2;
-    repeated common.Book suggested_books = 3;
 }
 
 message OrderEventRequest {
@@ -35,13 +32,6 @@ message OrderEventResponse {
     bool success = 1;
     string reason = 2;
     repeated int32 vector_clock = 3;
-}
-
-message OrderFlowResponse {
-    bool success = 1;
-    string reason = 2;
-    repeated int32 vector_clock = 3;
-    repeated common.Book suggested_books = 4;
 }
 
 message ClearOrderRequest {

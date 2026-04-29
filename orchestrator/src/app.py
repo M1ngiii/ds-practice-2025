@@ -36,8 +36,13 @@ import json
 app = Flask(__name__)
 CORS(app, resources={r'/*': {'origins': '*'}})
 
+# Per-order events and book results for the direct SG -> Orchestrator callback
+_order_events: dict = {}
+_order_results: dict = {}
+_results_lock = threading.Lock()
 
-# ── Initialization helpers ───────────────────────────────────────────────────
+
+# Initialization helpers
 
 def init_transaction(order_data, order_id, vector_clock):
     with grpc.insecure_channel('transaction_verification:50052') as channel:
@@ -93,7 +98,7 @@ def enqueue_order(order_id):
         return resp
 
 
-# ── Broadcast ClearOrder ─────────────────────────────────────────────────────
+# Broadcast ClearOrder
 
 def broadcast_clear(order_id, final_vc):
     def clear(channel_addr, make_stub, make_request):
@@ -124,7 +129,20 @@ def broadcast_clear(order_id, final_vc):
     print(f"[Orch] Broadcast ClearOrder complete | final_VC={list(final_vc)}")
 
 
-# ── Checkout endpoint ────────────────────────────────────────────────────────
+# Direct result callback from Suggestions
+
+@app.route('/order_result', methods=['POST'])
+def order_result():
+    data = request.get_json()
+    order_id = data.get('order_id', '')
+    with _results_lock:
+        if order_id in _order_events:
+            _order_results[order_id] = data.get('books', [])
+            _order_events[order_id].set()
+    return {'ack': True}
+
+
+# Checkout endpoint
 
 @app.route('/checkout', methods=['POST'])
 def checkout():
@@ -133,6 +151,12 @@ def checkout():
     initial_vc = [0, 0, 0]
 
     print(f"[Orch] Starting order {order_id}")
+
+    # Register event before init so any early SG callback is not lost
+    event = threading.Event()
+    with _results_lock:
+        _order_events[order_id] = event
+        _order_results[order_id] = []
 
     # Init phase (parallel) — all services cache data and initialize their VCs
     init_threads = [
@@ -146,10 +170,10 @@ def checkout():
         t.join()
     print(f"[Orch] Init complete | order={order_id}")
 
-    # Single call to TV — it drives the entire event chain:
+    # Single call to TV
     #   TV: A‖B, C→A, then calls FD
     #   FD: D→B (called by TV), E→(C,D) (called by TV after both C and D done), then calls SG
-    #   SG: F→E
+    #   SG: F→E, sends result directly back here via /order_result
     try:
         with grpc.insecure_channel('transaction_verification:50052') as channel:
             stub = transaction_verification_grpc.TransactionVerificationServiceStub(channel)
@@ -158,10 +182,22 @@ def checkout():
                 vector_clock=initial_vc
             ))
     except Exception as e:
+        with _results_lock:
+            _order_events.pop(order_id, None)
+            _order_results.pop(order_id, None)
         return {'orderId': order_id, 'status': 'Order Rejected', 'reason': str(e)}
 
     final_vc = list(resp.vector_clock)
     print(f"[Orch] ExecuteFlow complete | order={order_id} | success={resp.success} | final_VC={final_vc}")
+
+    # If the chain succeeded, SG has already called /order_result before TV returned.
+    # Wait briefly as a safety net
+    if resp.success:
+        event.wait(timeout=3.0)
+
+    with _results_lock:
+        _order_events.pop(order_id, None)
+        books = _order_results.pop(order_id, [])
 
     broadcast_clear(order_id, final_vc)
 
@@ -187,10 +223,7 @@ def checkout():
     return {
         'orderId': order_id,
         'status': 'Order Approved',
-        'suggestedBooks': [
-            {'bookId': b.book_id, 'title': b.title, 'author': b.author}
-            for b in resp.suggested_books
-        ]
+        'suggestedBooks': books
     }
 
 
@@ -200,4 +233,4 @@ def index():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0', threaded=True)

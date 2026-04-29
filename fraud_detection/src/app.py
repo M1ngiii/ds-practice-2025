@@ -52,7 +52,7 @@ class FraudDetectionService(fraud_detection_grpc.FraudDetectionServiceServicer):
     def RunEventD(self, request, context):
         """Event D: check user data for fraud. Called by TV after B completes."""
         order_id = request.order_id
-        # Receive from TV (post-B VC): merge + increment
+        # Receive from TV: merge + increment
         vc = self._merge_and_increment(order_id, request.vector_clock)
         print(f"[FD] Event D (CheckUserFraud) {order_id} | VC={vc}")
 
@@ -75,11 +75,11 @@ class FraudDetectionService(fraud_detection_grpc.FraudDetectionServiceServicer):
 
         cached = self.orders[order_id]
         if cached.card_number.startswith("999"):
-            return fraud_detection.OrderFlowResponse(
+            return fraud_detection.OrderEventResponse(
                 success=False, reason="Suspicious card prefix", vector_clock=vc
             )
 
-        # Call SG.GenerateSuggestions — send current FD VC (post-E)
+        # Call SG.GenerateSuggestions. SG sends the result directly to orchestrator
         vc_send = self._get_vc(order_id)
         try:
             with grpc.insecure_channel('suggestions:50053') as ch:
@@ -88,15 +88,14 @@ class FraudDetectionService(fraud_detection_grpc.FraudDetectionServiceServicer):
                     order_id=order_id, vector_clock=vc_send
                 ))
         except Exception as e:
-            return fraud_detection.OrderFlowResponse(
+            return fraud_detection.OrderEventResponse(
                 success=False, reason=str(e), vector_clock=self._get_vc(order_id)
             )
 
-        return fraud_detection.OrderFlowResponse(
+        return fraud_detection.OrderEventResponse(
             success=resp.success,
             reason=resp.reason,
-            vector_clock=resp.vector_clock,
-            suggested_books=resp.suggested_books
+            vector_clock=resp.vector_clock
         )
 
     def ClearOrder(self, request, context):

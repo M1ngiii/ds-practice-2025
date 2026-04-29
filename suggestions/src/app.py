@@ -2,6 +2,8 @@ import sys
 import os
 import threading
 import random
+import json as json_lib
+import urllib.request
 
 FILE = __file__ if '__file__' in globals() else os.getenv("PYTHONFILE", "")
 
@@ -25,6 +27,8 @@ BOOK_POOL = [
     {'book_id': '456', 'title': 'The Second Best Book', 'author': 'Author 2'},
     {'book_id': '789', 'title': 'The Third Best Book', 'author': 'Author 3'},
 ]
+
+ORCHESTRATOR_ADDRESS = os.getenv('ORCHESTRATOR_ADDRESS', 'orchestrator:5000')
 
 
 class SuggestionsService(suggestions_grpc.SuggestionsServiceServicer):
@@ -58,9 +62,22 @@ class SuggestionsService(suggestions_grpc.SuggestionsServiceServicer):
         print(f"[SG] Event F (GenerateSuggestions) {order_id} | VC={vc}")
 
         picks = random.sample(BOOK_POOL, 2)
-        suggested_books = [common.Book(**b) for b in picks]
+        books_payload = [{'bookId': b['book_id'], 'title': b['title'], 'author': b['author']} for b in picks]
 
-        return suggestions.OrderEventResponse(success=True, reason="OK", vector_clock=vc, suggested_books=suggested_books)
+        # Send result directly to orchestrator
+        try:
+            payload = json_lib.dumps({'order_id': order_id, 'books': books_payload}).encode()
+            req = urllib.request.Request(
+                f'http://{ORCHESTRATOR_ADDRESS}/order_result',
+                data=payload,
+                headers={'Content-Type': 'application/json'}
+            )
+            urllib.request.urlopen(req, timeout=5.0)
+            print(f"[SG] Sent result for {order_id} directly to orchestrator")
+        except Exception as e:
+            print(f"[SG] Failed to notify orchestrator for {order_id}: {e}")
+
+        return suggestions.OrderEventResponse(success=True, reason="OK", vector_clock=vc)
 
     def ClearOrder(self, request, context):
         order_id = request.order_id

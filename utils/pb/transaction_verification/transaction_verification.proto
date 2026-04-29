@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package transaction_verification;
 
-import "common/common.proto";
-
 service TransactionVerificationService {
     rpc InitOrder (TransactionRequest) returns (TransactionResponse);
     rpc ExecuteFlow (OrderFlowRequest) returns (OrderFlowResponse);
@@ -36,7 +34,6 @@ message TransactionResponse {
     bool is_valid = 1;
     string reason = 2;
     repeated int32 vector_clock = 3;
-    repeated common.Book suggested_books = 4;
 }
 
 message OrderFlowRequest {
@@ -48,7 +45,6 @@ message OrderFlowResponse {
     bool success = 1;
     string reason = 2;
     repeated int32 vector_clock = 3;
-    repeated common.Book suggested_books = 4;
 }
 
 message OrderEventRequest {

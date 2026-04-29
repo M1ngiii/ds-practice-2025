@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package suggestions;
 
-import "common/common.proto";
-
 service SuggestionsService {
     rpc InitOrder (SuggestionsRequest) returns (SuggestionsResponse);
     rpc GenerateSuggestions (OrderEventRequest) returns (OrderEventResponse);
@@ -18,8 +16,7 @@ message SuggestionsRequest {
 }
 
 message SuggestionsResponse {
-    repeated common.Book suggested_books = 1;
-    repeated int32 vector_clock = 2;
+    repeated int32 vector_clock = 1;
 }
 
 message OrderEventRequest {
@@ -31,7 +28,6 @@ message OrderEventResponse {
     bool success = 1;
     string reason = 2;
     repeated int32 vector_clock = 3;
-    repeated common.Book suggested_books = 4;
 }
 
 message ClearOrderRequest {
