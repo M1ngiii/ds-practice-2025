@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n7transaction_verification/transaction_verification.proto\x12\x18transaction_verification\"&\n\x04Item\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08quantity\x18\x02 \x01(\x05\"B\n\nCreditCard\x12\x0e\n\x06number\x18\x01 \x01(\t\x12\x17\n\x0f\x65xpiration_date\x18\x02 \x01(\t\x12\x0b\n\x03\x63vv\x18\x03 \x01(\t\"\xe7\x01\n\x12TransactionRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\x12\x11\n\tuser_name\x18\x03 \x01(\t\x12\x14\n\x0cuser_contact\x18\x04 \x01(\t\x12-\n\x05items\x18\x05 \x03(\x0b\x32\x1e.transaction_verification.Item\x12\x39\n\x0b\x63redit_card\x18\x06 \x01(\x0b\x32$.transaction_verification.CreditCard\x12\x16\n\x0eterms_accepted\x18\x07 \x01(\x08\"M\n\x13TransactionResponse\x12\x10\n\x08is_valid\x18\x01 \x01(\x08\x12\x0e\n\x06reason\x18\x02 \x01(\t\x12\x14\n\x0cvector_clock\x18\x03 \x03(\x05\":\n\x10OrderFlowRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\"J\n\x11OrderFlowResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0e\n\x06reason\x18\x02 \x01(\t\x12\x14\n\x0cvector_clock\x18\x03 \x03(\x05\";\n\x11OrderEventRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\"K\n\x12OrderEventResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0e\n\x06reason\x18\x02 \x01(\t\x12\x14\n\x0cvector_clock\x18\x03 \x03(\x05\";\n\x11\x43learOrderRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\"4\n\x12\x43learOrderResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\r\n\x05\x65rror\x18\x02 \x01(\t2\xdb\x02\n\x1eTransactionVerificationService\x12h\n\tInitOrder\x12,.transaction_verification.TransactionRequest\x1a-.transaction_verification.TransactionResponse\x12\x66\n\x0b\x45xecuteFlow\x12*.transaction_verification.OrderFlowRequest\x1a+.transaction_verification.OrderFlowResponse\x12g\n\nClearOrder\x12+.transaction_verification.ClearOrderRequest\x1a,.transaction_verification.ClearOrderResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n7transaction_verification/transaction_verification.proto\x12\x18transaction_verification\"&\n\x04Item\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08quantity\x18\x02 \x01(\x05\"B\n\nCreditCard\x12\x0e\n\x06number\x18\x01 \x01(\t\x12\x17\n\x0f\x65xpiration_date\x18\x02 \x01(\t\x12\x0b\n\x03\x63vv\x18\x03 \x01(\t\"\xe7\x01\n\x12TransactionRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\x12\x11\n\tuser_name\x18\x03 \x01(\t\x12\x14\n\x0cuser_contact\x18\x04 \x01(\t\x12-\n\x05items\x18\x05 \x03(\x0b\x32\x1e.transaction_verification.Item\x12\x39\n\x0b\x63redit_card\x18\x06 \x01(\x0b\x32$.transaction_verification.CreditCard\x12\x16\n\x0eterms_accepted\x18\x07 \x01(\x08\"M\n\x13TransactionResponse\x12\x10\n\x08is_valid\x18\x01 \x01(\x08\x12\x0e\n\x06reason\x18\x02 \x01(\t\x12\x14\n\x0cvector_clock\x18\x03 \x03(\x05\":\n\x10OrderFlowRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\"$\n\x11OrderFlowResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\";\n\x11\x43learOrderRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\"4\n\x12\x43learOrderResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\r\n\x05\x65rror\x18\x02 \x01(\t2\xdb\x02\n\x1eTransactionVerificationService\x12h\n\tInitOrder\x12,.transaction_verification.TransactionRequest\x1a-.transaction_verification.TransactionResponse\x12\x66\n\x0b\x45xecuteFlow\x12*.transaction_verification.OrderFlowRequest\x1a+.transaction_verification.OrderFlowResponse\x12g\n\nClearOrder\x12+.transaction_verification.ClearOrderRequest\x1a,.transaction_verification.ClearOrderResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -42,15 +42,11 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_ORDERFLOWREQUEST']._serialized_start=506
   _globals['_ORDERFLOWREQUEST']._serialized_end=564
   _globals['_ORDERFLOWRESPONSE']._serialized_start=566
-  _globals['_ORDERFLOWRESPONSE']._serialized_end=640
-  _globals['_ORDEREVENTREQUEST']._serialized_start=642
-  _globals['_ORDEREVENTREQUEST']._serialized_end=701
-  _globals['_ORDEREVENTRESPONSE']._serialized_start=703
-  _globals['_ORDEREVENTRESPONSE']._serialized_end=778
-  _globals['_CLEARORDERREQUEST']._serialized_start=780
-  _globals['_CLEARORDERREQUEST']._serialized_end=839
-  _globals['_CLEARORDERRESPONSE']._serialized_start=841
-  _globals['_CLEARORDERRESPONSE']._serialized_end=893
-  _globals['_TRANSACTIONVERIFICATIONSERVICE']._serialized_start=896
-  _globals['_TRANSACTIONVERIFICATIONSERVICE']._serialized_end=1243
+  _globals['_ORDERFLOWRESPONSE']._serialized_end=602
+  _globals['_CLEARORDERREQUEST']._serialized_start=604
+  _globals['_CLEARORDERREQUEST']._serialized_end=663
+  _globals['_CLEARORDERRESPONSE']._serialized_start=665
+  _globals['_CLEARORDERRESPONSE']._serialized_end=717
+  _globals['_TRANSACTIONVERIFICATIONSERVICE']._serialized_start=720
+  _globals['_TRANSACTIONVERIFICATIONSERVICE']._serialized_end=1067
 # @@protoc_insertion_point(module_scope)

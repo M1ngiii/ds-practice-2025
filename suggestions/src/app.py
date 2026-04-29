@@ -64,9 +64,14 @@ class SuggestionsService(suggestions_grpc.SuggestionsServiceServicer):
         picks = random.sample(BOOK_POOL, 2)
         books_payload = [{'bookId': b['book_id'], 'title': b['title'], 'author': b['author']} for b in picks]
 
-        # Send result directly to orchestrator
         try:
-            payload = json_lib.dumps({'order_id': order_id, 'books': books_payload}).encode()
+            payload = json_lib.dumps({
+                'order_id': order_id,
+                'success': True,
+                'reason': 'OK',
+                'vector_clock': vc,
+                'books': books_payload
+            }).encode()
             req = urllib.request.Request(
                 f'http://{ORCHESTRATOR_ADDRESS}/order_result',
                 data=payload,
@@ -77,7 +82,7 @@ class SuggestionsService(suggestions_grpc.SuggestionsServiceServicer):
         except Exception as e:
             print(f"[SG] Failed to notify orchestrator for {order_id}: {e}")
 
-        return suggestions.OrderEventResponse(success=True, reason="OK", vector_clock=vc)
+        return suggestions.OrderEventResponse(success=True)
 
     def ClearOrder(self, request, context):
         order_id = request.order_id

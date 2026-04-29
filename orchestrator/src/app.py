@@ -36,7 +36,7 @@ import json
 app = Flask(__name__)
 CORS(app, resources={r'/*': {'origins': '*'}})
 
-# Per-order events and book results for the direct SG -> Orchestrator callback
+# Per-order events and results for the direct service -> Orchestrator callback
 _order_events: dict = {}
 _order_results: dict = {}
 _results_lock = threading.Lock()
@@ -129,7 +129,7 @@ def broadcast_clear(order_id, final_vc):
     print(f"[Orch] Broadcast ClearOrder complete | final_VC={list(final_vc)}")
 
 
-# Direct result callback from Suggestions
+# Direct result callback from any service
 
 @app.route('/order_result', methods=['POST'])
 def order_result():
@@ -137,7 +137,7 @@ def order_result():
     order_id = data.get('order_id', '')
     with _results_lock:
         if order_id in _order_events:
-            _order_results[order_id] = data.get('books', [])
+            _order_results[order_id] = data
             _order_events[order_id].set()
     return {'ack': True}
 
@@ -156,7 +156,7 @@ def checkout():
     event = threading.Event()
     with _results_lock:
         _order_events[order_id] = event
-        _order_results[order_id] = []
+        _order_results[order_id] = {}
 
     # Init phase (parallel) — all services cache data and initialize their VCs
     init_threads = [
@@ -170,14 +170,11 @@ def checkout():
         t.join()
     print(f"[Orch] Init complete | order={order_id}")
 
-    # Single call to TV
-    #   TV: A‖B, C→A, then calls FD
-    #   FD: D→B (called by TV), E→(C,D) (called by TV after both C and D done), then calls SG
-    #   SG: F→E, sends result directly back here via /order_result
+    # Single call to TV — TV/FD/SG post result directly to /order_result
     try:
         with grpc.insecure_channel('transaction_verification:50052') as channel:
             stub = transaction_verification_grpc.TransactionVerificationServiceStub(channel)
-            resp = stub.ExecuteFlow(transaction_verification.OrderFlowRequest(
+            stub.ExecuteFlow(transaction_verification.OrderFlowRequest(
                 order_id=order_id,
                 vector_clock=initial_vc
             ))
@@ -187,22 +184,23 @@ def checkout():
             _order_results.pop(order_id, None)
         return {'orderId': order_id, 'status': 'Order Rejected', 'reason': str(e)}
 
-    final_vc = list(resp.vector_clock)
-    print(f"[Orch] ExecuteFlow complete | order={order_id} | success={resp.success} | final_VC={final_vc}")
-
-    # If the chain succeeded, SG has already called /order_result before TV returned.
-    # Wait briefly as a safety net
-    if resp.success:
-        event.wait(timeout=3.0)
+    event.wait(timeout=5.0)
 
     with _results_lock:
         _order_events.pop(order_id, None)
-        books = _order_results.pop(order_id, [])
+        result = _order_results.pop(order_id, {})
+
+    success = result.get('success', False)
+    reason = result.get('reason', 'No result received')
+    books = result.get('books', [])
+    final_vc = result.get('vector_clock', initial_vc)
+
+    print(f"[Orch] ExecuteFlow complete | order={order_id} | success={success} | final_VC={final_vc}")
 
     broadcast_clear(order_id, final_vc)
 
-    if not resp.success:
-        return {'orderId': order_id, 'status': 'Order Rejected', 'reason': resp.reason}
+    if not success:
+        return {'orderId': order_id, 'status': 'Order Rejected', 'reason': reason}
 
     # Enqueue approved order
     try:

@@ -32,14 +32,14 @@ Orchestrator ──gRPC──► TransactionVerification ──gRPC──► Fra
              ──gRPC──► FraudDetection      (Init / ClearOrder only)
              ──gRPC──► Suggestions         (Init / ClearOrder only)
              ──gRPC──► OrderQueue          (enqueue approved orders)
-             ◄──HTTP── Suggestions         (direct book result via POST /order_result)
+             ◄──HTTP── TV / FD / SG        (direct result via POST /order_result)
 
 OrderExecutor ──gRPC──► OrderQueue  (leader election + dequeue)
 ```
 
 - **Frontend → Orchestrator**: plain HTTP POST `/checkout` with a JSON body.
 - **Orchestrator → TransactionVerification**: single `ExecuteFlow` gRPC call that drives the entire event chain (A–F). TV internally calls FD for events D and E; FD internally calls SG for event F. Vector clocks are piggybacked on every request and response in this chain.
-- **Suggestions → Orchestrator**: after generating book recommendations, SG posts the result directly to the orchestrator via HTTP POST `/order_result`, bypassing the return chain. FD and TV return only success/reason/VC (no books).
+- **Services → Orchestrator**: whichever service terminates the flow (TV, FD, or SG) posts the full result (success, reason, vector clock, books) directly to the orchestrator via HTTP POST `/order_result`. The gRPC return chain carries only `{success: bool}` ACKs — no result data travels back through it.
 - **Orchestrator → FraudDetection / Suggestions**: gRPC for `InitOrder` and `ClearOrder` only (not for event execution).
 - **Orchestrator → OrderQueue**: gRPC `Enqueue` after all verification events pass.
 - **OrderExecutor → OrderQueue**: gRPC `TryBecomeLeader`, `RenewLeadership`, `Dequeue`. Two replicas compete; only the elected leader may dequeue.
@@ -207,7 +207,7 @@ merged[SERVICE_INDEX] += 1
 - **E** (CheckCardFraud) - TV calls `FD.RunEventE` after both threads join, passing TV's post-C VC
 - **F** (GenerateSuggestions) - FD calls `SG.GenerateSuggestions` from within `RunEventE`
 
-The orchestrator makes a single `TV.ExecuteFlow()` call. It does not track or merge VCs itself. The final VC bubbles back through FD → TV → Orchestrator via the gRPC return chain; the book recommendations are sent directly from SG to the orchestrator over HTTP (bypassing FD and TV). On cleanup, each service validates the final VC has no rollback via `ClearOrder`.
+The orchestrator makes a single `TV.ExecuteFlow()` call. It does not track or merge VCs itself. The full result (success, reason, VC, books) is sent directly to the orchestrator via HTTP POST `/order_result` by whichever service terminates the flow — nothing travels back through the gRPC return chain. On cleanup, each service validates the final VC has no rollback via `ClearOrder`.
 
 ### Event Dependency DAG
 
@@ -235,7 +235,7 @@ A and B are concurrent (no edge between them). All others have explicit causal d
 
 **Diagram 2**: one valid execution, showing the vector clock value at each service after every event. VC format: `[TV, FD, SG]`.
 
-The orchestrator makes a single `TV.ExecuteFlow([0,0,0])` call. TV immediately does a merge-and-increment, then launches two concurrent threads. A and B race for TV's lock: A wins, then B, then C. Thread t2 sends TV's post-B VC to `FD.RunEventD`, then FD processes D concurrently with C running in TV. After both threads join, TV calls `FD.RunEventE` with the post-C VC. FD merges its post-D VC with the received post-C VC, then calls `SG.GenerateSuggestions`. SG sends the book recommendations **directly to the orchestrator** via HTTP POST `/order_result` and returns only an ACK to FD. The VC `[4,2,1]` then bubbles back through FD → TV → Orchestrator without books. The final VC `[4,2,1]` reflects 4 TV increments (ExecuteFlow, A, B, C), 2 FD increments (D, E), and 1 SG increment (F).
+The orchestrator makes a single `TV.ExecuteFlow([0,0,0])` call. TV immediately does a merge-and-increment, then launches two concurrent threads. A and B race for TV's lock: A wins, then B, then C. Thread t2 sends TV's post-B VC to `FD.RunEventD`, then FD processes D concurrently with C running in TV. After both threads join, TV calls `FD.RunEventE` with the post-C VC. FD merges its post-D VC with the received post-C VC, then calls `SG.GenerateSuggestions`. SG sends the full result (success, reason, VC, books) **directly to the orchestrator** via HTTP POST `/order_result` and returns a plain ACK to FD. FD and TV also return plain ACKs up the chain — no result data travels back. The final VC `[4,2,1]` reflects 4 TV increments (ExecuteFlow, A, B, C), 2 FD increments (D, E), and 1 SG increment (F).
 
 ```mermaid
 sequenceDiagram
@@ -267,11 +267,11 @@ sequenceDiagram
     Note over FD: FD local=[3,1,0]<br/>merge([3,1,0],[4,0,0])+FD++ → [4,2,0]
     FD->>SG: GenerateSuggestions | send VC=[4,2,0]
     Note over SG: merge([0,0,0],[4,2,0])+SG++ → [4,2,1]
-    SG->>O: HTTP POST /order_result | books, VC=[4,2,1]
-    Note over O: books received, event set
-    SG-->>FD: VC=[4,2,1] (ACK, no books)
-    FD-->>TV: VC=[4,2,1] (no books)
-    TV-->>O: VC=[4,2,1] (no books)
+    SG->>O: HTTP POST /order_result | success, reason, VC=[4,2,1], books
+    Note over O: result received, event set
+    SG-->>FD: ACK
+    FD-->>TV: ACK
+    TV-->>O: ACK
     Note over O: final VC=[4,2,1] ✓
 ```
 

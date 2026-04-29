@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n%fraud_detection/fraud_detection.proto\x12\x0f\x66raud_detection\"u\n\x0c\x46raudRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\x12\x13\n\x0b\x63\x61rd_number\x18\x03 \x01(\t\x12\x14\n\x0corder_amount\x18\x04 \x01(\x02\x12\x12\n\nitem_names\x18\x05 \x03(\t\"7\n\rFraudResponse\x12\x10\n\x08is_fraud\x18\x01 \x01(\x08\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\";\n\x11OrderEventRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\"K\n\x12OrderEventResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0e\n\x06reason\x18\x02 \x01(\t\x12\x14\n\x0cvector_clock\x18\x03 \x03(\x05\";\n\x11\x43learOrderRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\"4\n\x12\x43learOrderResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\r\n\x05\x65rror\x18\x02 \x01(\t2\xe6\x02\n\x15\x46raudDetectionService\x12J\n\tInitOrder\x12\x1d.fraud_detection.FraudRequest\x1a\x1e.fraud_detection.FraudResponse\x12T\n\tRunEventD\x12\".fraud_detection.OrderEventRequest\x1a#.fraud_detection.OrderEventResponse\x12T\n\tRunEventE\x12\".fraud_detection.OrderEventRequest\x1a#.fraud_detection.OrderEventResponse\x12U\n\nClearOrder\x12\".fraud_detection.ClearOrderRequest\x1a#.fraud_detection.ClearOrderResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n%fraud_detection/fraud_detection.proto\x12\x0f\x66raud_detection\"u\n\x0c\x46raudRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\x12\x13\n\x0b\x63\x61rd_number\x18\x03 \x01(\t\x12\x14\n\x0corder_amount\x18\x04 \x01(\x02\x12\x12\n\nitem_names\x18\x05 \x03(\t\"7\n\rFraudResponse\x12\x10\n\x08is_fraud\x18\x01 \x01(\x08\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\";\n\x11OrderEventRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\"%\n\x12OrderEventResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\";\n\x11\x43learOrderRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x14\n\x0cvector_clock\x18\x02 \x03(\x05\"4\n\x12\x43learOrderResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\r\n\x05\x65rror\x18\x02 \x01(\t2\xe6\x02\n\x15\x46raudDetectionService\x12J\n\tInitOrder\x12\x1d.fraud_detection.FraudRequest\x1a\x1e.fraud_detection.FraudResponse\x12T\n\tRunEventD\x12\".fraud_detection.OrderEventRequest\x1a#.fraud_detection.OrderEventResponse\x12T\n\tRunEventE\x12\".fraud_detection.OrderEventRequest\x1a#.fraud_detection.OrderEventResponse\x12U\n\nClearOrder\x12\".fraud_detection.ClearOrderRequest\x1a#.fraud_detection.ClearOrderResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -38,11 +38,11 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_ORDEREVENTREQUEST']._serialized_start=234
   _globals['_ORDEREVENTREQUEST']._serialized_end=293
   _globals['_ORDEREVENTRESPONSE']._serialized_start=295
-  _globals['_ORDEREVENTRESPONSE']._serialized_end=370
-  _globals['_CLEARORDERREQUEST']._serialized_start=372
-  _globals['_CLEARORDERREQUEST']._serialized_end=431
-  _globals['_CLEARORDERRESPONSE']._serialized_start=433
-  _globals['_CLEARORDERRESPONSE']._serialized_end=485
-  _globals['_FRAUDDETECTIONSERVICE']._serialized_start=488
-  _globals['_FRAUDDETECTIONSERVICE']._serialized_end=846
+  _globals['_ORDEREVENTRESPONSE']._serialized_end=332
+  _globals['_CLEARORDERREQUEST']._serialized_start=334
+  _globals['_CLEARORDERREQUEST']._serialized_end=393
+  _globals['_CLEARORDERRESPONSE']._serialized_start=395
+  _globals['_CLEARORDERRESPONSE']._serialized_end=447
+  _globals['_FRAUDDETECTIONSERVICE']._serialized_start=450
+  _globals['_FRAUDDETECTIONSERVICE']._serialized_end=808
 # @@protoc_insertion_point(module_scope)

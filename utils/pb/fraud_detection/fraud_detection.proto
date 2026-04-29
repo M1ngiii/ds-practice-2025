@@ -30,8 +30,6 @@ message OrderEventRequest {
 
 message OrderEventResponse {
     bool success = 1;
-    string reason = 2;
-    repeated int32 vector_clock = 3;
 }
 
 message ClearOrderRequest {

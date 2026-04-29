@@ -43,19 +43,6 @@ message OrderFlowRequest {
 
 message OrderFlowResponse {
     bool success = 1;
-    string reason = 2;
-    repeated int32 vector_clock = 3;
-}
-
-message OrderEventRequest {
-    string order_id = 1;
-    repeated int32 vector_clock = 2;
-}
-
-message OrderEventResponse {
-    bool success = 1;
-    string reason = 2;
-    repeated int32 vector_clock = 3;
 }
 
 message ClearOrderRequest {
