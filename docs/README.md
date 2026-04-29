@@ -269,9 +269,6 @@ sequenceDiagram
     Note over SG: merge([0,0,0],[4,2,0])+SG++ → [4,2,1]
     SG->>O: HTTP POST /order_result | success, reason, VC=[4,2,1], books
     Note over O: result received, event set
-    SG-->>FD: ACK
-    FD-->>TV: ACK
-    TV-->>O: ACK
     Note over O: final VC=[4,2,1] ✓
 ```
 
