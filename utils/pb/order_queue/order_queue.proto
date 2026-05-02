@@ -11,12 +11,19 @@ service OrderQueueService {
     rpc GetLeader (GetLeaderRequest) returns (GetLeaderResponse);
 }
 
+message OrderItem {
+    string name = 1;
+    int32 quantity = 2;
+}
+
 message QueueItem {
     string order_id = 1;
+    repeated OrderItem items = 2;
 }
 
 message EnqueueRequest {
     string order_id = 1;
+    repeated OrderItem items = 2;
 }
 
 message EnqueueResponse {

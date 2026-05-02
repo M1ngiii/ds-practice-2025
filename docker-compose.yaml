@@ -93,6 +93,49 @@ services:
     volumes:
       - ./utils:/app/utils
       - ./order_queue/src:/app/order_queue/src
+  books_database_1:
+    build:
+      context: ./
+      dockerfile: ./books_database/Dockerfile
+    ports:
+      - 50055:50055
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/books_database/src/app.py
+      - DB_ROLE=primary
+      - DB_PORT=50055
+      - DB_BACKUP_ADDRESSES=books_database_2:50056,books_database_3:50057
+    volumes:
+      - ./utils:/app/utils
+      - ./books_database/src:/app/books_database/src
+  books_database_2:
+    build:
+      context: ./
+      dockerfile: ./books_database/Dockerfile
+    ports:
+      - 50056:50056
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/books_database/src/app.py
+      - DB_ROLE=backup
+      - DB_PORT=50056
+    volumes:
+      - ./utils:/app/utils
+      - ./books_database/src:/app/books_database/src
+  books_database_3:
+    build:
+      context: ./
+      dockerfile: ./books_database/Dockerfile
+    ports:
+      - 50057:50057
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/books_database/src/app.py
+      - DB_ROLE=backup
+      - DB_PORT=50057
+    volumes:
+      - ./utils:/app/utils
+      - ./books_database/src:/app/books_database/src
   order_executor:
     build:
       context: ./
@@ -102,6 +145,7 @@ services:
       - PYTHONUNBUFFERED=TRUE
       - PYTHONFILE=/app/order_executor/src/app.py
       - ORDER_QUEUE_ADDRESS=order_queue:50054
+      - DB_PRIMARY_ADDRESS=books_database_1:50055
     volumes:
       - ./utils:/app/utils
       - ./order_executor/src:/app/order_executor/src

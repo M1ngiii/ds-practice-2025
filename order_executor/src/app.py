@@ -20,13 +20,19 @@ sys.path.insert(0, order_queue_grpc_path)
 import order_queue_pb2 as order_queue
 import order_queue_pb2_grpc as order_queue_grpc
 
+books_database_grpc_path = os.path.abspath(os.path.join(FILE, '../../../utils/pb/books_database'))
+sys.path.insert(0, books_database_grpc_path)
+import books_database_pb2 as books_db
+import books_database_pb2_grpc as books_db_grpc
+
 import grpc
 
 
 class ExecutorService(order_executor_grpc.OrderExecutorServiceServicer):
-    def __init__(self, queue_address):
+    def __init__(self, queue_address, db_address):
         self.executor_id = str(uuid.uuid4())
         self.queue_address = queue_address
+        self.db_address = db_address
 
         self.is_leader = False
         self.state_lock = threading.Lock()
@@ -102,9 +108,18 @@ class ExecutorService(order_executor_grpc.OrderExecutorServiceServicer):
             print(f"[Executor {self.executor_id}] Dequeue failed: {e}")
             return None
 
-    def execute_order(self, order_id):
+    def execute_order(self, order_id, items):
         print(f"[Executor {self.executor_id}] Starting execution of order {order_id}")
-        time.sleep(1)  # simulate work
+        with grpc.insecure_channel(self.db_address) as channel:
+            stub = books_db_grpc.BooksDatabaseStub(channel)
+            for item in items:
+                resp = stub.Read(books_db.ReadRequest(title=item.name), timeout=2.0)
+                if resp.stock < item.quantity:
+                    print(f"[Executor {self.executor_id}] Insufficient stock for '{item.name}': have {resp.stock}, need {item.quantity}")
+                    continue
+                new_stock = resp.stock - item.quantity
+                stub.Write(books_db.WriteRequest(title=item.name, new_stock=new_stock), timeout=2.0)
+                print(f"[Executor {self.executor_id}] '{item.name}' stock updated: {resp.stock} -> {new_stock}")
         print(f"[Executor {self.executor_id}] Finished execution of order {order_id}")
 
     def election_loop(self):
@@ -137,7 +152,7 @@ class ExecutorService(order_executor_grpc.OrderExecutorServiceServicer):
             if not dequeue_resp.has_order:
                 continue
 
-            self.execute_order(dequeue_resp.order.order_id)
+            self.execute_order(dequeue_resp.order.order_id, dequeue_resp.order.items)
 
     def run(self):
         election_thread = threading.Thread(target=self.election_loop, daemon=True)
@@ -152,8 +167,9 @@ class ExecutorService(order_executor_grpc.OrderExecutorServiceServicer):
 
 def serve():
     queue_address = os.getenv("ORDER_QUEUE_ADDRESS", "order_queue:50054")
+    db_address = os.getenv("DB_PRIMARY_ADDRESS", "books_database_1:50055")
 
-    service = ExecutorService(queue_address=queue_address)
+    service = ExecutorService(queue_address=queue_address, db_address=db_address)
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     order_executor_grpc.add_OrderExecutorServiceServicer_to_server(service, server)

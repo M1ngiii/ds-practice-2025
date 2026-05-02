@@ -1,4 +1,3 @@
-from common import common_pb2 as _common_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -43,16 +42,14 @@ class TransactionRequest(_message.Message):
     def __init__(self, order_id: _Optional[str] = ..., vector_clock: _Optional[_Iterable[int]] = ..., user_name: _Optional[str] = ..., user_contact: _Optional[str] = ..., items: _Optional[_Iterable[_Union[Item, _Mapping]]] = ..., credit_card: _Optional[_Union[CreditCard, _Mapping]] = ..., terms_accepted: bool = ...) -> None: ...
 
 class TransactionResponse(_message.Message):
-    __slots__ = ("is_valid", "reason", "vector_clock", "suggested_books")
+    __slots__ = ("is_valid", "reason", "vector_clock")
     IS_VALID_FIELD_NUMBER: _ClassVar[int]
     REASON_FIELD_NUMBER: _ClassVar[int]
     VECTOR_CLOCK_FIELD_NUMBER: _ClassVar[int]
-    SUGGESTED_BOOKS_FIELD_NUMBER: _ClassVar[int]
     is_valid: bool
     reason: str
     vector_clock: _containers.RepeatedScalarFieldContainer[int]
-    suggested_books: _containers.RepeatedCompositeFieldContainer[_common_pb2.Book]
-    def __init__(self, is_valid: bool = ..., reason: _Optional[str] = ..., vector_clock: _Optional[_Iterable[int]] = ..., suggested_books: _Optional[_Iterable[_Union[_common_pb2.Book, _Mapping]]] = ...) -> None: ...
+    def __init__(self, is_valid: bool = ..., reason: _Optional[str] = ..., vector_clock: _Optional[_Iterable[int]] = ...) -> None: ...
 
 class OrderFlowRequest(_message.Message):
     __slots__ = ("order_id", "vector_clock")
@@ -63,34 +60,10 @@ class OrderFlowRequest(_message.Message):
     def __init__(self, order_id: _Optional[str] = ..., vector_clock: _Optional[_Iterable[int]] = ...) -> None: ...
 
 class OrderFlowResponse(_message.Message):
-    __slots__ = ("success", "reason", "vector_clock", "suggested_books")
+    __slots__ = ("success",)
     SUCCESS_FIELD_NUMBER: _ClassVar[int]
-    REASON_FIELD_NUMBER: _ClassVar[int]
-    VECTOR_CLOCK_FIELD_NUMBER: _ClassVar[int]
-    SUGGESTED_BOOKS_FIELD_NUMBER: _ClassVar[int]
     success: bool
-    reason: str
-    vector_clock: _containers.RepeatedScalarFieldContainer[int]
-    suggested_books: _containers.RepeatedCompositeFieldContainer[_common_pb2.Book]
-    def __init__(self, success: bool = ..., reason: _Optional[str] = ..., vector_clock: _Optional[_Iterable[int]] = ..., suggested_books: _Optional[_Iterable[_Union[_common_pb2.Book, _Mapping]]] = ...) -> None: ...
-
-class OrderEventRequest(_message.Message):
-    __slots__ = ("order_id", "vector_clock")
-    ORDER_ID_FIELD_NUMBER: _ClassVar[int]
-    VECTOR_CLOCK_FIELD_NUMBER: _ClassVar[int]
-    order_id: str
-    vector_clock: _containers.RepeatedScalarFieldContainer[int]
-    def __init__(self, order_id: _Optional[str] = ..., vector_clock: _Optional[_Iterable[int]] = ...) -> None: ...
-
-class OrderEventResponse(_message.Message):
-    __slots__ = ("success", "reason", "vector_clock")
-    SUCCESS_FIELD_NUMBER: _ClassVar[int]
-    REASON_FIELD_NUMBER: _ClassVar[int]
-    VECTOR_CLOCK_FIELD_NUMBER: _ClassVar[int]
-    success: bool
-    reason: str
-    vector_clock: _containers.RepeatedScalarFieldContainer[int]
-    def __init__(self, success: bool = ..., reason: _Optional[str] = ..., vector_clock: _Optional[_Iterable[int]] = ...) -> None: ...
+    def __init__(self, success: bool = ...) -> None: ...
 
 class ClearOrderRequest(_message.Message):
     __slots__ = ("order_id", "vector_clock")

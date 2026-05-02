@@ -91,10 +91,11 @@ def init_suggestions(order_data, order_id, vector_clock):
             item_names=[item.get('name', '') for item in order_data.get('items', [])]
         ))
 
-def enqueue_order(order_id):
+def enqueue_order(order_id, items):
     with grpc.insecure_channel('order_queue:50054') as channel:
         stub = order_queue_grpc.OrderQueueServiceStub(channel)
-        resp = stub.Enqueue(order_queue.EnqueueRequest(order_id=order_id))
+        queue_items = [order_queue.OrderItem(name=i['name'], quantity=i['quantity']) for i in items]
+        resp = stub.Enqueue(order_queue.EnqueueRequest(order_id=order_id, items=queue_items))
         return resp
 
 
@@ -204,7 +205,7 @@ def checkout():
 
     # Enqueue approved order
     try:
-        enqueue_resp = enqueue_order(order_id)
+        enqueue_resp = enqueue_order(order_id, request_data.get('items', []))
         if not enqueue_resp.success:
             return {
                 'orderId': order_id,

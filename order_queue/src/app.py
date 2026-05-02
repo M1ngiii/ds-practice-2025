@@ -42,7 +42,7 @@ class OrderQueueService(order_queue_grpc.OrderQueueServiceServicer):
             )
 
         with self.lock:
-            self.queue.append(order_id)
+            self.queue.append(order_queue.QueueItem(order_id=order_id, items=request.items))
             size = len(self.queue)
 
         print(f"[OrderQueue] Enqueued order {order_id} | size={size}")
@@ -74,16 +74,16 @@ class OrderQueueService(order_queue_grpc.OrderQueueServiceServicer):
                     message="Queue is empty"
                 )
 
-            order_id = self.queue.popleft()
+            item = self.queue.popleft()
             size = len(self.queue)
 
-        print(f"[OrderQueue] Leader {executor_id} dequeued order {order_id} | size={size}")
+        print(f"[OrderQueue] Leader {executor_id} dequeued order {item.order_id} | size={size}")
 
         return order_queue.DequeueResponse(
             success=True,
             has_order=True,
-            order=order_queue.QueueItem(order_id=order_id),
-            message=f"Order {order_id} dequeued successfully"
+            order=item,
+            message=f"Order {item.order_id} dequeued successfully"
         )
 
     def TryBecomeLeader(self, request, context):

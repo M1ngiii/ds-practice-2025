@@ -24,31 +24,33 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1dorder_queue/order_queue.proto\x12\x0border_queue\"\x1d\n\tQueueItem\x12\x10\n\x08order_id\x18\x01 \x01(\t\"\"\n\x0e\x45nqueueRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\"3\n\x0f\x45nqueueResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"%\n\x0e\x44\x65queueRequest\x12\x13\n\x0b\x65xecutor_id\x18\x01 \x01(\t\"m\n\x0f\x44\x65queueResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x11\n\thas_order\x18\x02 \x01(\x08\x12%\n\x05order\x18\x03 \x01(\x0b\x32\x16.order_queue.QueueItem\x12\x0f\n\x07message\x18\x04 \x01(\t\"$\n\rLeaderRequest\x12\x13\n\x0b\x65xecutor_id\x18\x01 \x01(\t\"X\n\x0eLeaderResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x11\n\tis_leader\x18\x02 \x01(\x08\x12\x11\n\tleader_id\x18\x03 \x01(\t\x12\x0f\n\x07message\x18\x04 \x01(\t\"\x12\n\x10GetLeaderRequest\":\n\x11GetLeaderResponse\x12\x12\n\nhas_leader\x18\x01 \x01(\x08\x12\x11\n\tleader_id\x18\x02 \x01(\t2\x83\x03\n\x11OrderQueueService\x12\x44\n\x07\x45nqueue\x12\x1b.order_queue.EnqueueRequest\x1a\x1c.order_queue.EnqueueResponse\x12\x44\n\x07\x44\x65queue\x12\x1b.order_queue.DequeueRequest\x1a\x1c.order_queue.DequeueResponse\x12J\n\x0fTryBecomeLeader\x12\x1a.order_queue.LeaderRequest\x1a\x1b.order_queue.LeaderResponse\x12J\n\x0fRenewLeadership\x12\x1a.order_queue.LeaderRequest\x1a\x1b.order_queue.LeaderResponse\x12J\n\tGetLeader\x12\x1d.order_queue.GetLeaderRequest\x1a\x1e.order_queue.GetLeaderResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1dorder_queue/order_queue.proto\x12\x0border_queue\"+\n\tOrderItem\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08quantity\x18\x02 \x01(\x05\"D\n\tQueueItem\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12%\n\x05items\x18\x02 \x03(\x0b\x32\x16.order_queue.OrderItem\"I\n\x0e\x45nqueueRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12%\n\x05items\x18\x02 \x03(\x0b\x32\x16.order_queue.OrderItem\"3\n\x0f\x45nqueueResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"%\n\x0e\x44\x65queueRequest\x12\x13\n\x0b\x65xecutor_id\x18\x01 \x01(\t\"m\n\x0f\x44\x65queueResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x11\n\thas_order\x18\x02 \x01(\x08\x12%\n\x05order\x18\x03 \x01(\x0b\x32\x16.order_queue.QueueItem\x12\x0f\n\x07message\x18\x04 \x01(\t\"$\n\rLeaderRequest\x12\x13\n\x0b\x65xecutor_id\x18\x01 \x01(\t\"X\n\x0eLeaderResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x11\n\tis_leader\x18\x02 \x01(\x08\x12\x11\n\tleader_id\x18\x03 \x01(\t\x12\x0f\n\x07message\x18\x04 \x01(\t\"\x12\n\x10GetLeaderRequest\":\n\x11GetLeaderResponse\x12\x12\n\nhas_leader\x18\x01 \x01(\x08\x12\x11\n\tleader_id\x18\x02 \x01(\t2\x83\x03\n\x11OrderQueueService\x12\x44\n\x07\x45nqueue\x12\x1b.order_queue.EnqueueRequest\x1a\x1c.order_queue.EnqueueResponse\x12\x44\n\x07\x44\x65queue\x12\x1b.order_queue.DequeueRequest\x1a\x1c.order_queue.DequeueResponse\x12J\n\x0fTryBecomeLeader\x12\x1a.order_queue.LeaderRequest\x1a\x1b.order_queue.LeaderResponse\x12J\n\x0fRenewLeadership\x12\x1a.order_queue.LeaderRequest\x1a\x1b.order_queue.LeaderResponse\x12J\n\tGetLeader\x12\x1d.order_queue.GetLeaderRequest\x1a\x1e.order_queue.GetLeaderResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'order_queue.order_queue_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_QUEUEITEM']._serialized_start=46
-  _globals['_QUEUEITEM']._serialized_end=75
-  _globals['_ENQUEUEREQUEST']._serialized_start=77
-  _globals['_ENQUEUEREQUEST']._serialized_end=111
-  _globals['_ENQUEUERESPONSE']._serialized_start=113
-  _globals['_ENQUEUERESPONSE']._serialized_end=164
-  _globals['_DEQUEUEREQUEST']._serialized_start=166
-  _globals['_DEQUEUEREQUEST']._serialized_end=203
-  _globals['_DEQUEUERESPONSE']._serialized_start=205
-  _globals['_DEQUEUERESPONSE']._serialized_end=314
-  _globals['_LEADERREQUEST']._serialized_start=316
-  _globals['_LEADERREQUEST']._serialized_end=352
-  _globals['_LEADERRESPONSE']._serialized_start=354
-  _globals['_LEADERRESPONSE']._serialized_end=442
-  _globals['_GETLEADERREQUEST']._serialized_start=444
-  _globals['_GETLEADERREQUEST']._serialized_end=462
-  _globals['_GETLEADERRESPONSE']._serialized_start=464
-  _globals['_GETLEADERRESPONSE']._serialized_end=522
-  _globals['_ORDERQUEUESERVICE']._serialized_start=525
-  _globals['_ORDERQUEUESERVICE']._serialized_end=912
+  _globals['_ORDERITEM']._serialized_start=46
+  _globals['_ORDERITEM']._serialized_end=89
+  _globals['_QUEUEITEM']._serialized_start=91
+  _globals['_QUEUEITEM']._serialized_end=159
+  _globals['_ENQUEUEREQUEST']._serialized_start=161
+  _globals['_ENQUEUEREQUEST']._serialized_end=234
+  _globals['_ENQUEUERESPONSE']._serialized_start=236
+  _globals['_ENQUEUERESPONSE']._serialized_end=287
+  _globals['_DEQUEUEREQUEST']._serialized_start=289
+  _globals['_DEQUEUEREQUEST']._serialized_end=326
+  _globals['_DEQUEUERESPONSE']._serialized_start=328
+  _globals['_DEQUEUERESPONSE']._serialized_end=437
+  _globals['_LEADERREQUEST']._serialized_start=439
+  _globals['_LEADERREQUEST']._serialized_end=475
+  _globals['_LEADERRESPONSE']._serialized_start=477
+  _globals['_LEADERRESPONSE']._serialized_end=565
+  _globals['_GETLEADERREQUEST']._serialized_start=567
+  _globals['_GETLEADERREQUEST']._serialized_end=585
+  _globals['_GETLEADERRESPONSE']._serialized_start=587
+  _globals['_GETLEADERRESPONSE']._serialized_end=645
+  _globals['_ORDERQUEUESERVICE']._serialized_start=648
+  _globals['_ORDERQUEUESERVICE']._serialized_end=1035
 # @@protoc_insertion_point(module_scope)
