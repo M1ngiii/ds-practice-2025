@@ -136,6 +136,18 @@ services:
     volumes:
       - ./utils:/app/utils
       - ./books_database/src:/app/books_database/src
+  payment:
+    build:
+      context: ./
+      dockerfile: ./payment/Dockerfile
+    ports:
+      - 50058:50058
+    environment:
+      - PYTHONUNBUFFERED=TRUE
+      - PYTHONFILE=/app/payment/src/app.py
+    volumes:
+      - ./utils:/app/utils
+      - ./payment/src:/app/payment/src
   order_executor:
     build:
       context: ./
@@ -146,6 +158,7 @@ services:
       - PYTHONFILE=/app/order_executor/src/app.py
       - ORDER_QUEUE_ADDRESS=order_queue:50054
       - DB_PRIMARY_ADDRESS=books_database_1:50055
+      - PAYMENT_ADDRESS=payment:50058
     volumes:
       - ./utils:/app/utils
       - ./order_executor/src:/app/order_executor/src
