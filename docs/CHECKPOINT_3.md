@@ -15,11 +15,11 @@ This checkpoint adds four new services to the system described in CHECKPOINT_2.m
 | `books_database_3` | Backup database replica | gRPC | 50057 |
 | `payment` | Payment service (2PC participant) | gRPC | 50058 |
 
-The executor now also calls the database and payment service as part of order execution, in addition to the queue calls described in CHECKPOINT_2.md.
+The executor now also calls the database and payment service as part of order execution, in addition to the queue calls described in the previous report.
 
 ---
 
-## Books Database — Consistency Protocol
+## Books Database - Consistency Protocol
 
 ### Design: Primary-Backup Replication
 
@@ -28,7 +28,7 @@ Three instances run the same `BooksDatabaseServicer` code (`books_database/src/a
 The gRPC interface exposes `Read`, `Write`, and the 2PC operations `Prepare`, `Commit`, `Abort`. Clients always talk to the primary; replication is invisible to them.
 
 - **Reads** are served from the primary's local store.
-- **Writes** on commit: primary applies the write locally, then replicates to both backups (best-effort, 2 s timeout). A replication failure is logged but does not fail the commit — availability is favoured over strict consistency on backup reads.
+- **Writes** on commit: primary applies the write locally, then replicates to both backups (best-effort, 2s timeout). A replication failure is logged but does not fail the commit. Availability is favoured over strict consistency on backup reads.
 - **Sequential consistency** holds on the primary: all writes go through one node in order, and reads from the primary always reflect the latest committed state.
 
 ### Replication Diagram
@@ -62,13 +62,13 @@ sequenceDiagram
 
 The executor acts as the **coordinator**; the DB primary and payment service are the **participants**. Implemented in `order_executor/src/app.py` (`execute_order`) and in the `Prepare`/`Commit`/`Abort` RPCs of both participant services.
 
-**Phase 1 — Prepare:**
+**Phase 1 - Prepare:**
 1. Executor reads current stock from the DB primary and computes `new_stock = stock - quantity` for each item.
 2. Calls `DB.Prepare(order_id, title, new_stock)` for each item. DB validates `new_stock >= 0` and stages the write in `pending[order_id]`; votes Yes. Votes No on negative stock.
 3. Calls `Payment.Prepare(order_id, amount)`. Payment stages the transaction; always votes Yes.
 4. If any vote is No or a call times out, `all_yes = False`.
 
-**Phase 2 — Commit or Abort:**
+**Phase 2 - Commit or Abort:**
 - All Yes → `DB.Commit` + `Payment.Commit`. DB applies staged writes and replicates to backups; payment executes the dummy payment.
 - Any No → `DB.Abort` + `Payment.Abort`. Both discard staged state.
 
@@ -86,7 +86,7 @@ sequenceDiagram
     DB-->>Exec: stock=10
     Note over Exec: new_stock = 10 - 2 = 8
 
-    Note over Exec,Pay: Phase 1 — Prepare
+    Note over Exec,Pay: Phase 1 - Prepare
     Exec->>DB: Prepare(order_id, title="Book A", new_stock=8)
     Note over DB: new_stock >= 0 → stage in pending[order_id]
     DB-->>Exec: PrepareResponse(success=true)
@@ -95,7 +95,7 @@ sequenceDiagram
     Note over Pay: Stage in pending[order_id]
     Pay-->>Exec: PrepareResponse(success=true)
 
-    Note over Exec,Pay: Phase 2 — Commit
+    Note over Exec,Pay: Phase 2 - Commit
     Exec->>DB: Commit(order_id)
     Note over DB: Apply staged writes → replicate to backups
     DB-->>Exec: CommitResponse(success=true)
@@ -116,13 +116,13 @@ sequenceDiagram
     Exec->>DB: Read(title="Book A")
     DB-->>Exec: stock=0
 
-    Note over Exec,Pay: Phase 1 — Prepare
+    Note over Exec,Pay: Phase 1 - Prepare
     Exec->>DB: Prepare(order_id, title="Book A", new_stock=-1)
     Note over DB: new_stock < 0 → vote No
     DB-->>Exec: PrepareResponse(success=false, reason="Insufficient stock")
-    Note over Exec: all_yes=False — skip Payment.Prepare
+    Note over Exec: all_yes=False - skip Payment.Prepare
 
-    Note over Exec,Pay: Phase 2 — Abort
+    Note over Exec,Pay: Phase 2 - Abort
     Exec->>DB: Abort(order_id)
     DB-->>Exec: AbortResponse(success=true)
     Exec->>Pay: Abort(order_id)
@@ -132,7 +132,7 @@ sequenceDiagram
 **Trade-offs:**
 - **Blocking hazard**: if the coordinator crashes after sending some Commit messages but before all are delivered, participants that received Commit are committed while others remain in the prepared state with no way to resolve autonomously.
 - No persistent write-ahead log: a coordinator crash loses the decision; recovery requires manual restart.
-- 2 phases, ~6 messages per transaction (1 pre-read + 2 Prepare + 2 Commit/Abort).
+- 2 phases, 5 round trips per transaction (1 pre-read + 2 Prepare + 2 Commit/Abort).
 
 ---
 
@@ -160,17 +160,17 @@ Representative log sequences:
 [DB Backup] Starting on port 50056
 
 [Executor abc-123] 2PC starting for order order-42
-[DB] Prepare order=order-42 title=Book A new_stock=8 — voted Yes
-[Payment] Prepare order=order-42 amount=2.0 — voted Yes
+[DB] Prepare order=order-42 title=Book A new_stock=8 - voted Yes
+[Payment] Prepare order=order-42 amount=2.0 - voted Yes
 [DB Primary] Commit order=order-42 applied=[('Book A', 8)]
-[Payment] Commit order=order-42 — payment of 2.0 executed
+[Payment] Commit order=order-42 - payment of 2.0 executed
 [Executor abc-123] 2PC complete for order order-42 | committed=True
 ```
 
 ```
-[DB] Prepare REJECTED order=order-43 title=Book B — insufficient stock
+[DB] Prepare REJECTED order=order-43 title=Book B - insufficient stock
 [Executor abc-123] DB voted No for 'Book B': Insufficient stock for 'Book B'
-[DB] Abort order=order-43 — staged writes discarded
-[Payment] Abort order=order-43 — transaction discarded
+[DB] Abort order=order-43 - staged writes discarded
+[Payment] Abort order=order-43 - transaction discarded
 [Executor abc-123] 2PC complete for order order-43 | committed=False
 ```
