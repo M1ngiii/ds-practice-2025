@@ -1,6 +1,6 @@
 # Documentation
 
-Note: The mermaid diagram assets were generated with the help of Claude Code.
+Note: The mermaid diagrams were made with the help of Claude.
 
 ---
 
@@ -86,27 +86,23 @@ sequenceDiagram
     DB-->>Exec: stock=10
     Note over Exec: new_stock = 10 - 2 = 8
 
-    rect rgb(220,240,255)
-        Note over Exec,Pay: Phase 1 — Prepare
-        Exec->>DB: Prepare(order_id, title="Book A", new_stock=8)
-        Note over DB: new_stock >= 0 → stage in pending[order_id]
-        DB-->>Exec: PrepareResponse(success=true)
+    Note over Exec,Pay: Phase 1 — Prepare
+    Exec->>DB: Prepare(order_id, title="Book A", new_stock=8)
+    Note over DB: new_stock >= 0 → stage in pending[order_id]
+    DB-->>Exec: PrepareResponse(success=true)
 
-        Exec->>Pay: Prepare(order_id, amount=2.0)
-        Note over Pay: Stage in pending[order_id]
-        Pay-->>Exec: PrepareResponse(success=true)
-    end
+    Exec->>Pay: Prepare(order_id, amount=2.0)
+    Note over Pay: Stage in pending[order_id]
+    Pay-->>Exec: PrepareResponse(success=true)
 
-    rect rgb(220,255,220)
-        Note over Exec,Pay: Phase 2 — Commit
-        Exec->>DB: Commit(order_id)
-        Note over DB: Apply staged writes → replicate to backups
-        DB-->>Exec: CommitResponse(success=true)
+    Note over Exec,Pay: Phase 2 — Commit
+    Exec->>DB: Commit(order_id)
+    Note over DB: Apply staged writes → replicate to backups
+    DB-->>Exec: CommitResponse(success=true)
 
-        Exec->>Pay: Commit(order_id)
-        Note over Pay: Execute dummy payment
-        Pay-->>Exec: CommitResponse(success=true)
-    end
+    Exec->>Pay: Commit(order_id)
+    Note over Pay: Execute dummy payment
+    Pay-->>Exec: CommitResponse(success=true)
 ```
 
 **Abort (insufficient stock):**
@@ -120,21 +116,17 @@ sequenceDiagram
     Exec->>DB: Read(title="Book A")
     DB-->>Exec: stock=0
 
-    rect rgb(220,240,255)
-        Note over Exec,Pay: Phase 1 — Prepare
-        Exec->>DB: Prepare(order_id, title="Book A", new_stock=-1)
-        Note over DB: new_stock < 0 → vote No
-        DB-->>Exec: PrepareResponse(success=false, reason="Insufficient stock")
-        Note over Exec: all_yes=False — skip Payment.Prepare
-    end
+    Note over Exec,Pay: Phase 1 — Prepare
+    Exec->>DB: Prepare(order_id, title="Book A", new_stock=-1)
+    Note over DB: new_stock < 0 → vote No
+    DB-->>Exec: PrepareResponse(success=false, reason="Insufficient stock")
+    Note over Exec: all_yes=False — skip Payment.Prepare
 
-    rect rgb(255,220,220)
-        Note over Exec,Pay: Phase 2 — Abort
-        Exec->>DB: Abort(order_id)
-        DB-->>Exec: AbortResponse(success=true)
-        Exec->>Pay: Abort(order_id)
-        Pay-->>Exec: AbortResponse(success=true)
-    end
+    Note over Exec,Pay: Phase 2 — Abort
+    Exec->>DB: Abort(order_id)
+    DB-->>Exec: AbortResponse(success=true)
+    Exec->>Pay: Abort(order_id)
+    Pay-->>Exec: AbortResponse(success=true)
 ```
 
 **Trade-offs:**
