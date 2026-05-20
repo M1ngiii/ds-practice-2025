@@ -196,7 +196,7 @@ class ExecutorService(order_executor_grpc.OrderExecutorServiceServicer):
 
     def leader_loop(self):
         while self.running:
-            time.sleep(1.0)
+            time.sleep(0.1)
 
             with self.state_lock:
                 am_leader = self.is_leader
