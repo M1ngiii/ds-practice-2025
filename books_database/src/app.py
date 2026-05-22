@@ -16,9 +16,9 @@ import books_database_pb2_grpc as books_db_grpc
 import grpc
 
 INITIAL_STOCK = {
-    "Book A": 1000,
-    "Book B": 1000,
-    "Book C": 1000,
+    "Book A": 10,
+    "Book B": 10,
+    "Book C": 10,
 }
 
 
