@@ -61,8 +61,10 @@ flowchart TB
     SG -->|HTTP POST /order_result| Orch
     Orch -->|gRPC Enqueue| OQ
     E1 & E2 -->|gRPC TryBecomeLeader/RenewLeadership/Dequeue| OQ
-    exec -->|gRPC Read/Prepare/Commit/Abort| DB1
-    exec -->|gRPC 2PC Prepare/Commit/Abort| Pay
+    E1 & E2 --> junc[ ]
+    junc -->|gRPC Read/Prepare/Commit/Abort| DB1
+    junc -->|gRPC 2PC Prepare/Commit/Abort| Pay
+    style junc fill:none,stroke:none
     DB1 -->|gRPC Write replication| DB2 & DB3
     Orch & E1 & E2 -->|OTLP HTTP| Obs
 ```
