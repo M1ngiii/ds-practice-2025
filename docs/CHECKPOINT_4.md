@@ -37,8 +37,7 @@ flowchart TB
 
     subgraph exec["Execution"]
         OQ["order_queue\n:50054"]
-        E1["executor-1\n:50061"]
-        E2["executor-2\n:50061"]
+        E["order_executor ×2\n:50061"]
     end
 
     subgraph storage["Storage"]
@@ -60,13 +59,11 @@ flowchart TB
     FD -->|gRPC GenerateSuggestions| SG
     SG -->|HTTP POST /order_result| Orch
     Orch -->|gRPC Enqueue| OQ
-    E1 & E2 -->|gRPC TryBecomeLeader/RenewLeadership/Dequeue| OQ
-    E1 & E2 --> junc[ ]
-    junc -->|gRPC Read/Prepare/Commit/Abort| DB1
-    junc -->|gRPC 2PC Prepare/Commit/Abort| Pay
-    style junc fill:none,stroke:none
+    E -->|gRPC TryBecomeLeader/RenewLeadership/Dequeue| OQ
+    E -->|gRPC Read/Prepare/Commit/Abort| DB1
+    E -->|gRPC 2PC Prepare/Commit/Abort| Pay
     DB1 -->|gRPC Write replication| DB2 & DB3
-    Orch & E1 & E2 -->|OTLP HTTP| Obs
+    Orch & E -->|OTLP HTTP| Obs
 ```
 
 ---
