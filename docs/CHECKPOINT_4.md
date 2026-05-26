@@ -40,14 +40,15 @@ flowchart TB
         E["order_executor ×2\n:50061"]
     end
 
-    subgraph storage["Storage"]
+    subgraph twopc["2PC Participants"]
         direction LR
-        DB1[("books_db_1\nprimary :50055")]
-        DB2[("books_db_2\n:50056")]
-        DB3[("books_db_3\n:50057")]
+        subgraph storage["Storage"]
+            DB1[("books_db_1\nprimary :50055")]
+            DB2[("books_db_2\n:50056")]
+            DB3[("books_db_3\n:50057")]
+        end
+        Pay["payment\n:50058"]
     end
-
-    Pay["payment\n:50058"]
 
     Obs["observability\nGrafana :3000\nOTLP :4317/:4318"]
 
