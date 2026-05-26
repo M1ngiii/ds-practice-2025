@@ -45,15 +45,15 @@ flowchart TB
         DB1[("books_db_1\nprimary :50055")]
         DB2[("books_db_2\n:50056")]
         DB3[("books_db_3\n:50057")]
-        Pay["payment\n:50058"]
     end
+
+    Pay["payment\n:50058"]
 
     Obs["observability\nGrafana :3000\nOTLP :4317/:4318"]
 
     Browser -->|HTTP| FE
     FE -->|HTTP| Orch
-    Orch -->|gRPC InitOrder/ClearOrder| FD
-    Orch -->|gRPC InitOrder/ClearOrder| SG
+    Orch -->|gRPC InitOrder/ClearOrder| FD & SG
     Orch -->|gRPC ExecuteFlow/InitOrder/ClearOrder| TV
     TV -->|gRPC RunEventD/E| FD
     FD -->|gRPC GenerateSuggestions| SG
@@ -104,4 +104,4 @@ Dashboard JSON: [`grafana_dashboard.json`](grafana_dashboard.json)
 
 Panels:
 - Prometheus: `bookstore.2pc.committed` and `bookstore.2pc.aborted` over time
-- Tempo: distributed traces for `checkout` and `2pc.execute_order` spans
+- Tempo: distributed traces for `checkout` and `2pc.execute_order` spans (panel: "Recent Orchestrator Traces")
