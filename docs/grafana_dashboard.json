@@ -167,7 +167,7 @@
         "kind": "Panel",
         "spec": {
           "id": 7,
-          "title": "New Panel",
+          "title": "Recent Orchestrator Traces",
           "description": "",
           "links": [],
           "data": {
