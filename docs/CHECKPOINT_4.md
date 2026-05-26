@@ -24,20 +24,31 @@ All services, ports, and communication protocols.
 | `observability` | Grafana + Prometheus + Tempo (otel-lgtm) | OTLP HTTP/gRPC, Grafana UI | 4318, 4317, 3000 |
 
 ```mermaid
-graph TD
-    Browser["Browser"]
+flowchart TB
+    Browser(["Browser"])
     FE["frontend\n:8080"]
     Orch["orchestrator\n:5000"]
-    TV["transaction_verification\n:50052"]
-    FD["fraud_detection\n:50051"]
-    SG["suggestions\n:50053"]
-    OQ["order_queue\n:50054"]
-    E1["order_executor-1\n:50061"]
-    E2["order_executor-2\n:50061"]
-    DB1["books_database_1\nprimary :50055"]
-    DB2["books_database_2\nbackup :50056"]
-    DB3["books_database_3\nbackup :50057"]
-    Pay["payment\n:50058"]
+
+    subgraph verif["Verification"]
+        TV["transaction_verification\n:50052"]
+        FD["fraud_detection\n:50051"]
+        SG["suggestions\n:50053"]
+    end
+
+    subgraph exec["Execution"]
+        OQ["order_queue\n:50054"]
+        E1["executor-1\n:50061"]
+        E2["executor-2\n:50061"]
+    end
+
+    subgraph storage["Storage"]
+        direction LR
+        DB1[("books_db_1\nprimary :50055")]
+        DB2[("books_db_2\n:50056")]
+        DB3[("books_db_3\n:50057")]
+        Pay["payment\n:50058"]
+    end
+
     Obs["observability\nGrafana :3000\nOTLP :4317/:4318"]
 
     Browser -->|HTTP| FE
@@ -49,17 +60,11 @@ graph TD
     FD -->|gRPC GenerateSuggestions| SG
     SG -->|HTTP POST /order_result| Orch
     Orch -->|gRPC Enqueue| OQ
-    E1 -->|gRPC TryBecomeLeader/RenewLeadership/Dequeue| OQ
-    E2 -->|gRPC TryBecomeLeader/RenewLeadership/Dequeue| OQ
-    E1 -->|gRPC Read/Prepare/Commit/Abort| DB1
-    E2 -->|gRPC Read/Prepare/Commit/Abort| DB1
-    E1 -->|gRPC 2PC Prepare/Commit/Abort| Pay
-    E2 -->|gRPC 2PC Prepare/Commit/Abort| Pay
-    DB1 -->|gRPC Write replication| DB2
-    DB1 -->|gRPC Write replication| DB3
-    Orch -->|OTLP HTTP| Obs
-    E1 -->|OTLP HTTP| Obs
-    E2 -->|OTLP HTTP| Obs
+    E1 & E2 -->|gRPC TryBecomeLeader/RenewLeadership/Dequeue| OQ
+    E1 & E2 -->|gRPC Read/Prepare/Commit/Abort| DB1
+    E1 & E2 -->|gRPC 2PC Prepare/Commit/Abort| Pay
+    DB1 -->|gRPC Write replication| DB2 & DB3
+    Orch & E1 & E2 -->|OTLP HTTP| Obs
 ```
 
 ---
